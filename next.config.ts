@@ -3,6 +3,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   pageExtensions: ['ts', 'tsx', 'mdx'],
+  // The views route checks that a slug is a real post by looking at the
+  // content directory at request time, so it must ship with the function.
+  outputFileTracingIncludes: { '/api/views/[slug]': ['./content/posts/**'] },
 };
 
 /**

@@ -1,0 +1,54 @@
+/* The final width, held. It does not pulse — a loop next to prose is noise,
+   and the wait is tens of milliseconds. */
+.reserved {
+  display: inline-block;
+  width: 96px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.views {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  transition: color var(--dur-instant) ease-out;
+}
+
+/* What is being counted, shown on the number itself — not a toast. */
+.basis {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 2;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 11.5px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink-tertiary);
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .views:hover {
+    color: var(--ink-secondary);
+  }
+  .views:hover .basis {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.views:focus-visible .basis {
+  opacity: 1;
+  transform: none;
+}

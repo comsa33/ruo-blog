@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getPosts, formatDate, type PostMeta } from '@/lib/posts';
+import { getPosts } from '@/lib/posts';
+import { PostList } from '@/components/PostList';
 import { site, t, type Lang } from '@/lib/site';
 import styles from './page.module.css';
 
@@ -15,26 +15,6 @@ export async function generateMetadata({
     description: site.description[lang],
     alternates: { canonical: `/${lang}` },
   };
-}
-
-function PostRow({ post, lang, i }: { post: PostMeta; lang: Lang; i: number }) {
-  return (
-    <li className="rise" style={{ '--i': i } as React.CSSProperties}>
-      <Link href={`/${lang}/${post.slug}`} className={styles.row}>
-        <div>
-          {post.topic && <span className={styles.rowTopic}>{post.topic}</span>}
-          <h3 className={styles.rowTitle}>
-            {post.title}
-            <span className={styles.arrow} aria-hidden>
-              →
-            </span>
-          </h3>
-          {post.description && <p className={styles.rowDesc}>{post.description}</p>}
-        </div>
-        <span className={styles.meta}>{formatDate(post.date, lang)}</span>
-      </Link>
-    </li>
-  );
 }
 
 export default async function IndexPage({ params }: { params: Promise<{ lang: Lang }> }) {
@@ -52,11 +32,7 @@ export default async function IndexPage({ params }: { params: Promise<{ lang: La
 
       <section className={styles.section}>
         {posts.length ? (
-          <ul className={styles.list}>
-            {posts.map((p, i) => (
-              <PostRow key={p.slug} post={p} lang={lang} i={i + 2} />
-            ))}
-          </ul>
+          <PostList posts={posts} lang={lang} />
         ) : (
           <p className={styles.empty}>{t.empty[lang]}</p>
         )}

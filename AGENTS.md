@@ -104,6 +104,12 @@ per-post configuration for them.
 |---|---|
 | `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block), a guide line drawn at the active tick, and an action at the line's right end. Ticks respond to pointer distance. Below 1180px the ruler is hidden, the line moves to a fixed 62% of the viewport, and both keep working. |
 | `<TravelingDot>` | One accent dot that moves to the heading or caption the reader is on. Anchors are discovered from `h1/h2/h3/figcaption`, so nothing needs marking up. |
+| `<Views>` | `1,284회 · 오늘 32` in the meta line. Counted once per person per KST day via `/api/views/[slug]`, stored in the Redis named by `KV_REST_API_URL` / `KV_REST_API_TOKEN` (see `.env.example`). With no store configured the clause is simply absent. |
+
+The index (`<PostList>`) searches title, description, topic and tags — the
+frontmatter, never the body — and a tag on a post page links to `/ko?q=<tag>`.
+There is no tag wall and no topic filter; a topic line is only worth adding
+once a second topic exists.
 
 Dot size is emphasis: `--indicator-size` is declared per level in
 `post.module.css` (h1 18px, h2 14px, h3 10px, figcaption 7px). Change it there,

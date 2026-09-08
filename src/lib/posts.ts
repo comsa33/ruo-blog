@@ -111,12 +111,4 @@ export function getAvailableLangs(slug: string): Lang[] {
   return LANGS.filter((lang) => fs.existsSync(path.join(CONTENT_DIR, slug, `${lang}.mdx`)));
 }
 
-export function formatDate(date: string, lang: Lang): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  return new Intl.DateTimeFormat(lang === 'ko' ? 'ko-KR' : 'en-US', {
-    year: 'numeric',
-    month: lang === 'ko' ? 'long' : 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(d);
-}
+export { formatDate } from './date';

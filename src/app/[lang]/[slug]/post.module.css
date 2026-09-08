@@ -66,8 +66,16 @@
   background: var(--accent);
 }
 
+/* Tags are links. The only hover is one step up the greys. */
 .tag {
   color: var(--ink-tertiary);
+  transition: color var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .tag:hover {
+    color: var(--ink);
+  }
 }
 
 .meta {

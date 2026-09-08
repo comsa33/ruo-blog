@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { getPost, getAllParams, formatDate } from '@/lib/posts';
 import { ReadingRuler } from '@/components/ReadingRuler';
 import { TravelingDot } from '@/components/TravelingDot';
+import { Views } from '@/components/Views';
 import { site, t, type Lang } from '@/lib/site';
 import styles from './post.module.css';
 
@@ -13,11 +14,7 @@ export function generateStaticParams() {
   return getAllParams();
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<Params>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { lang, slug } = await params;
   const post = getPost(slug, lang);
   if (!post) return {};
@@ -54,10 +51,11 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
         <header className={`${styles.header} rise`}>
           <div className={styles.kicker}>
             {post.topic && <span className={styles.topic}>{post.topic}</span>}
+            {/* A tag is a link into the index search — there is no tag wall. */}
             {post.tags.map((tag) => (
-              <span key={tag} className={styles.tag}>
+              <Link key={tag} href={`/${lang}?q=${encodeURIComponent(tag)}`} className={styles.tag}>
                 {tag}
-              </span>
+              </Link>
             ))}
           </div>
           <h1 className={styles.title}>{post.title}</h1>
@@ -69,10 +67,15 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
               {post.readingTime}
               {t.minutes[lang]}
             </span>
+            <Views slug={slug} lang={lang} />
           </div>
         </header>
 
-        <div data-prose className={`${styles.prose} rise`} style={{ '--i': 1 } as React.CSSProperties}>
+        <div
+          data-prose
+          className={`${styles.prose} rise`}
+          style={{ '--i': 1 } as React.CSSProperties}
+        >
           <Body />
         </div>
       </article>

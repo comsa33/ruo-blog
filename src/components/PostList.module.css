@@ -1,0 +1,248 @@
+/* ---------- Search ---------- */
+
+/*
+ * Not a box. This is the list's top rule with an input laid on it; focus
+ * turns the rule to the accent and nothing else on the page moves.
+ */
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+  margin: 0 -12px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color var(--dur-fast) var(--ease-state);
+}
+
+.search:focus-within {
+  border-bottom-color: var(--accent);
+}
+
+.glyph {
+  flex: none;
+  color: var(--ink-tertiary);
+  transition: color var(--dur-instant) ease-out;
+}
+
+.search:focus-within .glyph {
+  color: var(--ink-secondary);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.input::placeholder {
+  color: var(--ink-tertiary);
+}
+
+.kbd {
+  flex: none;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1;
+  color: var(--ink-tertiary);
+}
+
+/* Touch devices have no ⌘. */
+@media (hover: none) {
+  .kbd {
+    display: none;
+  }
+}
+
+.count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.scope {
+  padding: 12px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+
+/* Marked, not bolded — weight would shift the line. */
+.mark {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+/* ---------- Rail ---------- */
+
+.list,
+.rows {
+  list-style: none;
+}
+
+/*
+ * A month marker sticks in the sheet gutter — the margin the reading ruler
+ * occupies on a post page — and rides along with its group. Where there is
+ * no gutter it becomes a line above the group instead.
+ */
+.group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rail {
+  display: block;
+  padding: 18px 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (min-width: 1181px) {
+  .group {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+  .rail {
+    position: sticky;
+    top: calc(var(--header-h) + 20px);
+    align-self: start;
+    width: 84px;
+    margin-left: -116px;
+    padding: 18px 0 0;
+    text-align: right;
+  }
+}
+
+/* ---------- Rows ---------- */
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 16px;
+  /* Padding, not margin — no dead area between rows. */
+  padding: 18px 12px;
+  margin: 0 -12px;
+  border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--line);
+  transition: background-color var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: var(--bg-hover);
+  }
+  .row:hover .rowTitle {
+    color: var(--accent);
+  }
+  .row:hover .rowTopic {
+    color: var(--ink-secondary);
+  }
+  .row:hover .arrow {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The keyboard cursor. Same grammar as TravelingDot: the title opens a
+   1.35em slot and slides right to receive the dot. */
+.row[data-active] {
+  background: var(--bg-hover);
+}
+
+/* Same label spec as the article header, one size down for a list. */
+.rowTopic {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: normal;
+  color: var(--ink-tertiary);
+  transition: color var(--dur-instant) ease-out;
+}
+
+.rowTitle {
+  position: relative;
+  padding-left: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.45;
+  transition:
+    color var(--dur-instant) ease-out,
+    padding-left 480ms var(--ease);
+}
+
+.row[data-active] .rowTitle {
+  padding-left: 1.35em;
+}
+
+.dot {
+  position: absolute;
+  left: 0.4em;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-instant) ease-out;
+}
+
+.row[data-active] .dot {
+  opacity: 1;
+}
+
+.arrow {
+  display: inline-block;
+  margin-left: 6px;
+  opacity: 0;
+  transform: translateX(-3px);
+  color: var(--accent);
+  transition:
+    opacity var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out;
+}
+
+.rowDesc {
+  margin-top: 5px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-tertiary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  padding: 28px 0;
+  font-size: 14px;
+  color: var(--ink-tertiary);
+}

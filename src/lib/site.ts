@@ -24,4 +24,17 @@ export const t = {
   nextSection: { ko: '다음 섹션', en: 'Next section' },
   backToTop: { ko: '맨 위로', en: 'Back to top' },
   copied: { ko: '복사됨', en: 'Copied' },
+  search: { ko: '검색', en: 'Search' },
+  found: { ko: '건', en: ' found' },
+  noMatch: { ko: '일치하는 글이 없습니다.', en: 'Nothing matches.' },
+  searchScope: {
+    ko: '제목 · 요약 · 토픽 · 태그에서 찾음 · ↑↓ 이동 · esc 지우기',
+    en: 'Title · summary · topic · tags · ↑↓ move · esc clear',
+  },
+  views: { ko: '회', en: ' views' },
+  today: { ko: '오늘', en: 'today' },
+  viewsBasis: {
+    ko: 'KST 기준 · 오늘 00:00부터 · 한 사람 하루 1회',
+    en: 'KST · since 00:00 today · one per person per day',
+  },
 } as const;
