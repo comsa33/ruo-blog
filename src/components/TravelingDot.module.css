@@ -40,9 +40,10 @@
   }
 }
 
-/* Without a left margin to hang in, the dot would overlap the text. */
-@media (max-width: 900px) {
-  .dot {
-    display: none;
-  }
-}
+/*
+ * Narrow screens have no left margin to hang in, so the dot moves inside the
+ * column and the heading text slides right to receive it — the reference does
+ * exactly this at its own breakpoint. The offset is applied by the component,
+ * which reads --dot-inside.
+ */
+/* The narrow-screen branch lives in the component; nothing to switch here. */

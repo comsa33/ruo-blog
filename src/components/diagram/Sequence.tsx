@@ -28,6 +28,8 @@ const HEAD_H = 30;
 const TOP = 46;
 const GAP = 54;
 const SELF_W = 46;
+/** Length of the arrowhead. The shaft stops exactly where the head begins. */
+const HEAD = 7;
 
 export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
   const [current, setCurrent] = useState(0);
@@ -45,14 +47,14 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
         const x2 = x(s.to);
         const self = s.from === s.to;
         const dir = x2 >= x1 ? 1 : -1;
-        // Self-messages loop out to the right and come back to the same lifeline.
+        // The shaft stops at the base of the head so that the tip — not the
+        // base — lands on the target lifeline. Leaving the 5px gap that was
+        // here before made every arrow look short of its mark.
         const d = self
-          ? `M ${x1} ${y} h ${SELF_W} v 18 h ${-SELF_W}`
-          : `M ${x1} ${y} H ${x2 - dir * 5}`;
+          ? `M ${x1} ${y} h ${SELF_W} v 18 h ${-(SELF_W - HEAD)}`
+          : `M ${x1} ${y} H ${x2 - dir * HEAD}`;
         const len = self ? SELF_W * 2 + 18 : Math.abs(x2 - x1);
-        const headX = self ? x1 + 6 : x2 - dir * 5;
-        const headY = self ? y + 18 : y;
-        return { ...s, y, x1, x2, self, dir, d, len, headX, headY };
+        return { ...s, y, x1, x2, self, dir, d, len };
       }),
     [steps, x],
   );
@@ -127,8 +129,9 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
                   className={styles.msgHead}
                   d={
                     g.self
-                      ? `M ${g.headX} ${g.headY} l 6 -3 v 6 z`
-                      : `M ${g.headX} ${g.headY} l ${-g.dir * 6} -3.5 v 7 z`
+                      ? // tip on the lifeline, pointing back at it
+                        `M ${g.x1} ${g.y + 18} l ${HEAD} -3.5 v 7 z`
+                      : `M ${g.x2} ${g.y} l ${-g.dir * HEAD} -3.5 v 7 z`
                   }
                 />
                 <text

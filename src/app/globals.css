@@ -216,7 +216,7 @@ pre {
 
 @media (max-width: 900px) {
   [data-dot][data-dot-active] {
-    padding-left: 1.45em;
+    padding-left: 1.35em;
   }
 }
 
