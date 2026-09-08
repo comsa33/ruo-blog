@@ -48,9 +48,23 @@
 }
 
 .lifeline {
-  stroke: var(--line);
+  stroke: var(--line-strong);
   stroke-width: 1;
   stroke-dasharray: 3 4;
+  transition:
+    stroke var(--dur-instant) ease-out,
+    stroke-opacity var(--dur-instant) ease-out;
+  stroke-opacity: 0.5;
+}
+
+/*
+ * The two actors in the current step carry their lifelines with them. Marking
+ * only the boxes left the reader with no way to tell which vertical line the
+ * message travelled along, which is the one thing a sequence diagram is for.
+ */
+.actorActive .lifeline {
+  stroke: var(--accent);
+  stroke-opacity: 0.55;
 }
 
 /* ---- messages ---- */
