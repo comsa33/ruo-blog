@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Sibling of the po24lio.com mark: same ink tile, same accent, same flip on
+    dark UIs. Where the portfolio carries a single dot, the blog carries that
+    dot travelling along its guide line — the one interaction the site is
+    built around. Two shapes only, and the gap between them is 7 units so it
+    still separates when the whole tile is 16px wide.
+  -->
+  <style>
+    .tile { fill: #0f0f0f; }
+    @media (prefers-color-scheme: dark) { .tile { fill: #f2f2f2; } }
+  </style>
+  <rect class="tile" width="64" height="64" rx="16"/>
+  <circle cx="19" cy="32" r="8.5" fill="#ff6a00"/>
+  <rect x="34.5" y="29" width="19" height="6" rx="3" fill="#ff6a00"/>
+</svg>
