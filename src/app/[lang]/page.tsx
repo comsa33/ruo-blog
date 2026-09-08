@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getPosts, groupByType, formatDate, type PostMeta } from '@/lib/posts';
+import { getPosts, formatDate, type PostMeta } from '@/lib/posts';
 import { site, t, type Lang } from '@/lib/site';
 import styles from './page.module.css';
 
@@ -39,7 +39,7 @@ function PostRow({ post, lang, i }: { post: PostMeta; lang: Lang; i: number }) {
 
 export default async function IndexPage({ params }: { params: Promise<{ lang: Lang }> }) {
   const { lang } = await params;
-  const { note, log } = groupByType(getPosts(lang));
+  const posts = getPosts(lang);
 
   return (
     <main className={styles.main}>
@@ -51,23 +51,9 @@ export default async function IndexPage({ params }: { params: Promise<{ lang: La
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t.notesHeading[lang]}</h2>
-        {note.length ? (
+        {posts.length ? (
           <ul className={styles.list}>
-            {note.map((p, i) => (
-              <PostRow key={p.slug} post={p} lang={lang} i={i + 2} />
-            ))}
-          </ul>
-        ) : (
-          <p className={styles.empty}>{t.empty[lang]}</p>
-        )}
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t.logHeading[lang]}</h2>
-        {log.length ? (
-          <ul className={styles.list}>
-            {log.map((p, i) => (
+            {posts.map((p, i) => (
               <PostRow key={p.slug} post={p} lang={lang} i={i + 2} />
             ))}
           </ul>

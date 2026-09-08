@@ -55,7 +55,6 @@ title: '예시가 지시문을 이긴다'
 description: '한 줄 요약. 목록과 검색 결과에 그대로 노출된다.'
 topic: '에이전트 메모리'    # required — what the post is about
 date: 2026-09-08          # YYYY-MM-DD
-type: note                # note | log
 tags: ['프롬프트 설계', 'LLM', '한국어']
 draft: false              # true hides it in production, shows it in dev
 ---
@@ -66,15 +65,14 @@ the index. **They are written for a reader, not for a search engine** — a
 subject a person would recognise, not a stack keyword. `topic` is the subject
 (`에이전트 메모리`), `tags` are qualifiers, two or three at most.
 
-`type` is never shown. It only decides which section of the index a post lands
-in; the label above the title is always `topic`.
+The label above the title is always `topic`.
 
-`type` decides which section of the index the post lands in:
-
-- **`note`** — a worked explanation. Long, diagram-heavy, one idea followed all
-  the way down. This is the default and the reason the site exists.
-- **`log`** — a short record. What was done, what broke, what was decided. No
-  obligation to be complete.
+There is no post type. The index is one list, newest first. An earlier
+note/log split described the *form* of a post rather than what a reader gets
+from it, and every post turned out to be both — so it was removed rather than
+kept as an empty section. If a distinction is ever needed it should be about
+the contract with the reader (does this reach a conclusion or not), and it
+should be introduced only when there is content on both sides.
 
 Both languages must exist, or the language toggle leads to a 404.
 

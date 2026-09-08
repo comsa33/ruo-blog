@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
-import { LANGS, type Lang, type PostType } from './site';
+import { LANGS, type Lang } from './site';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'posts');
 
@@ -14,7 +14,6 @@ export type PostMeta = {
   topic: string;
   /** ISO date, YYYY-MM-DD. */
   date: string;
-  type: PostType;
   tags: string[];
   draft: boolean;
   /** Estimated reading time in minutes. */
@@ -76,7 +75,6 @@ function readPost(slug: string, lang: Lang): PostMeta | null {
     topic: String(data.topic ?? ''),
     // gray-matter parses unquoted YAML dates into Date objects.
     date: data.date instanceof Date ? data.date.toISOString().slice(0, 10) : String(data.date),
-    type: (data.type ?? 'note') as PostType,
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     draft: Boolean(data.draft),
     readingTime: readingTime(content, lang),
@@ -111,13 +109,6 @@ export function getAllParams(): { lang: Lang; slug: string }[] {
 /** Which languages a given post exists in — drives the language toggle. */
 export function getAvailableLangs(slug: string): Lang[] {
   return LANGS.filter((lang) => fs.existsSync(path.join(CONTENT_DIR, slug, `${lang}.mdx`)));
-}
-
-export function groupByType(posts: PostMeta[]) {
-  return {
-    note: posts.filter((p) => p.type === 'note'),
-    log: posts.filter((p) => p.type === 'log'),
-  };
 }
 
 export function formatDate(date: string, lang: Lang): string {

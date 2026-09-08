@@ -15,14 +15,7 @@ export const site = {
 export const LANGS = ['ko', 'en'] as const;
 export type Lang = (typeof LANGS)[number];
 
-export const POST_TYPES = ['note', 'log'] as const;
-export type PostType = (typeof POST_TYPES)[number];
-
 export const t = {
-  note: { ko: '해설', en: 'Note' },
-  log: { ko: '기록', en: 'Log' },
-  notesHeading: { ko: '해설', en: 'Notes' },
-  logHeading: { ko: '기록', en: 'Log' },
   contents: { ko: '목차', en: 'Contents' },
   backToIndex: { ko: '목록', en: 'Index' },
   minutes: { ko: '분', en: ' min' },

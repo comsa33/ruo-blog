@@ -24,18 +24,10 @@
 }
 
 .section {
-  margin-top: 56px;
-}
-
-.sectionTitle {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-tertiary);
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
+  margin-top: 8px;
+  /* The list used to hang off a section heading. With the heading gone it
+     carries its own top rule so the first row is not floating. */
+  border-top: 1px solid var(--line);
 }
 
 .list {
