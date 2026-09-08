@@ -1,0 +1,189 @@
+---
+title: 'A threshold is measured, not chosen'
+description: 'Similarity 0.85. The work that went into not answering "it looked about right" when someone asks where the number came from.'
+topic: 'Agent memory'
+date: 2026-08-22
+type: note
+tags: ['thresholds', 'embeddings', 'benchmarks']
+---
+
+The last post was about the memory service attached to an agent. This one is about a single number buried inside it.
+
+A user says "I'm moving in December" and the model writes that down. But last month it already stored "moving in November". Write a new one, overwrite the old one, or keep both?
+
+The question is whether the two sentences are **the same fact**, and that is answered with embedding similarity. So: same from what number up?
+
+## Where the number sits
+
+<Structure
+  nodes={[
+    { id: 'tool', label: 'Write request', sub: 'model → memory', col: 0, row: 0, note: 'The model asks to record one fact about the user.' },
+    { id: 'hash', label: 'Hash check', col: 1, row: 0, note: 'An identical sentence ends here. No new row; the existing one just has its timestamp revived.' },
+    { id: 'sim', label: 'Similarity check', sub: 'threshold A', col: 2, row: 0, accent: true, note: 'Looks for a near-identical fact in the same category. Above the line it overwrites, below it writes a new one. The subject of this post.' },
+    { id: 'promote', label: 'Promotion check', sub: 'threshold B', col: 2, row: 1, accent: true, note: 'If an automatically extracted memory holds the same fact, overwrite and promote it. A second threshold is needed here.' },
+    { id: 'store', label: 'Store', col: 3, row: 0, note: 'Ends as one of: insert, update, skip.' },
+    { id: 'auto', label: 'Auto-extracted', sub: 'episode', col: 1, row: 1, note: 'Memories pulled from conversation automatically. Less trustworthy than what the model wrote deliberately.' },
+  ]}
+  edges={[
+    { from: 'tool', to: 'hash' },
+    { from: 'hash', to: 'sim', label: 'no match' },
+    { from: 'sim', to: 'store', label: 'update / insert' },
+    { from: 'auto', to: 'promote', dashed: true },
+    { from: 'promote', to: 'store', label: 'promote' },
+  ]}
+  hint="Hover a node to reveal its connections."
+/>
+
+Two thresholds are needed: one for **merging duplicates within a category**, another for **overwriting an older, automatically collected memory**. The second is the dangerous one. The first risks leaving a duplicate; the second risks erasing somebody else's fact.
+
+## What happens if you guess
+
+We started at 0.9, on the theory that a high bar is a safe bar.
+
+Production disagreed immediately. A user corrected their moving date to December, and the stale "November" memory **kept coming back as the top search result.** The correction had not failed to save; both were alive, and the stale one simply retrieved better.
+
+A high threshold is not safe. It means **wrong memories live longer.**
+
+## So we measured
+
+We collected sentence pairs and scored them with the same embedding model production uses. The pairs fall into four groups, because what we want differs by group.
+
+- **Same fact** — different wording. Must overwrite
+- **Correction** — the value changed. Must overwrite, or the failure above happens
+- **Added detail** — the same fact with reasoning attached. Overwriting loses the elaboration
+- **Different fact** — same category, different content. Overwriting destroys someone else's memory
+
+The first two belong **above** the line, the last two **below** it. Setting a threshold means laying these four distributions on one axis and finding where to cut.
+
+<Threshold
+  caption="Promotion threshold sweep — 51 real pairs"
+  clusters={[
+    { key: 'A', name: 'same fact', n: 20, min: 0.7630, max: 1.0000, mean: 0.9305, want: 'above' },
+    { key: 'D', name: 'correction', n: 7, min: 0.3574, max: 0.9428, mean: 0.7750, want: 'above' },
+    { key: 'B', name: 'added detail', n: 4, min: 0.6027, max: 0.8437, mean: 0.7450, want: 'below' },
+    { key: 'C', name: 'different fact', n: 20, min: 0.1902, max: 0.6271, mean: 0.3846, want: 'below' },
+  ]}
+  sweep={[
+    { at: 0.80, counts: { A: 19, D: 5, B: 2, C: 0 } },
+    { at: 0.85, counts: { A: 18, D: 4, B: 0, C: 0 } },
+    { at: 0.90, counts: { A: 14, D: 3, B: 0, C: 0 } },
+  ]}
+  chosen={0.85}
+  chosenNote="shipped at 0.85"
+/>
+
+Press 0.80 and **two of the four added-detail pairs get overwritten.** Push to 0.90 and nothing is wrongly overwritten, but six of twenty same-fact pairs are missed. Only at 0.85 are both protected groups intact.
+
+## The margins are deliberately uneven
+
+0.85 was not picked for being in the middle. The two directions of failure do not cost the same.
+
+<Metrics>
+  <Metric value="+0.22" label="margin to different facts. Overwriting one destroys it" />
+  <Metric value="+0.006" label="margin to added detail. The fact survives; only the elaboration is lost" />
+</Metrics>
+
+The thin margin is on the less dangerous side. Losing an elaboration loses the *why* but keeps the *what*, and history can restore it. Losing a different fact destroys the fact itself, silently.
+
+So **the margin was given to the dangerous axis.** The asymmetry between 0.22 and 0.006 is a decision, not an oversight.
+
+The same principle set the merge threshold, measured separately over 28 pairs.
+
+| Group | Meaning | min | max | mean |
+|---|---|---|---|---|
+| Near duplicate | same fact, different wording — merge | 0.8217 | 0.9706 | 0.8885 |
+| Legitimate update | same subject, changed value | 0.7508 | 0.9543 | 0.8612 |
+| Different fact | same category only — never merge | 0.3225 | 0.7113 | 0.5291 |
+
+<Compare
+  caption="Gap between what must merge and what must not be touched"
+  beforeLabel="different, max"
+  afterLabel="duplicate, min"
+  before={0.7113}
+  after={0.8217}
+  beforeText="0.7113"
+  afterText="0.8217"
+  note="The two distributions <strong>do not overlap.</strong> A gap of 0.1104. Anywhere inside it would work, but the margin went to the do-not-merge side, so 0.80 — 0.089 below, 0.022 above."
+/>
+
+## Where similarity stops working
+
+Measuring surfaced a region no threshold reaches.
+
+<Transform
+  caption="Two corrections of the same kind, scoring differently"
+  inputLabel="Stored memory"
+  input={[{ text: 'The user owns the retention dashboard.' }]}
+  outputLabel="Incoming correction"
+  variants={[
+    {
+      key: 'same',
+      label: 'Correction in the same sentence frame',
+      output: [{ attr: '0.8592 – 0.9428', text: 'The user owns the cohort analysis dashboard.' }],
+      verdict: 'Clears the threshold. The stale memory is overwritten, as intended.',
+    },
+    {
+      key: 'diff',
+      label: 'Correction in a different frame',
+      output: [{ attr: '0.3574 – 0.5966', text: 'Their remit changed and they now handle cohort analysis.' }],
+      verdict: 'A correction of the same fact, landing inside the different-fact cluster. No threshold catches it.',
+      bad: true,
+    },
+  ]}
+/>
+
+Same kind of correction: caught when the frame is preserved, missed when it is not. **Lowering the threshold does not fix this** — going lower starts overwriting genuinely different facts.
+
+This region is not a similarity problem; it is a question similarity cannot be asked. The answer is to let the model name the memory it is replacing, not to tune a number. The real yield of the measurement was not 0.85, but **knowing the boundary of where 0.85 stops applying.**
+
+## On the read path we dropped thresholds entirely
+
+Thresholds worked on the write path, so the obvious move was to add one on the read path too, cutting low-scoring search results. The usual thing.
+
+The measurement said otherwise.
+
+<Compare
+  caption="Recall quality by search score threshold"
+  beforeLabel="threshold 0.5"
+  afterLabel="threshold 0.1"
+  before={13.2}
+  after={20.6}
+  beforeText="−13.2%p"
+  afterText="+20.6%p"
+  note="Cutting made it worse. The cause: <strong>score scale differs by query type.</strong> A topical query's top hit scored 0.397; a personal-fact query's top hit scored 0.092. Put them on one axis and the personal-fact side loses its correct answers first."
+/>
+
+Embedding scores are not absolute. The same 0.3 is a top hit for one query and noise for another. **On the write path two sentences are compared directly, so the value means something; in search the axis moves with every query.**
+
+So search has no absolute threshold, only ordering. Narrowing is done with conditions instead of scores.
+
+<Compare
+  caption="Recall after adding a scope filter"
+  beforeLabel="no filter"
+  afterLabel="user scope"
+  before={31}
+  after={51}
+  beforeText="31%"
+  afterText="51%"
+  note="<strong>+20%p.</strong> The scope filter was there as a security boundary; it turned out to be a retrieval-quality device too. Removing what is definitely wrong beats cutting by score."
+/>
+
+## What this does not prove
+
+Stated plainly.
+
+**It is not a significance test.** It is decision-support: does the empirical distribution of real pairs separate? Embeddings are deterministic, so the same pair always scores the same. Repeating the measurement means nothing, and there is exactly one source of uncertainty — **whether this sample represents the population.**
+
+**One of the protected groups is thin.** Added-detail has four pairs. That shape of memory is genuinely rare in the corpus and a second mining pass could not grow it. The 0.006 margin cannot be tightened with sampling. It has to be corrected against the score distribution in production logs, and frequent hits near 0.85 are the signal to raise the line.
+
+**The domain is narrow.** The pairs come from three work personas. Sentence shapes from other domains were never measured.
+
+## What is left
+
+**A threshold is measured, not chosen.** 0.85 is an observation, not a judgement. When someone asks, there is a table.
+
+**Decide the cost of failing in each direction first.** Once you know which way it hurts less to be wrong, where to put the margin follows. Skip that step and the threshold just drifts to the middle.
+
+**The yield of measuring is a boundary, not a number.** Learning that reframed corrections escape every threshold was worth more than arriving at 0.85. Knowing where something stops working tells you where to build something else.
+
+**The same instrument inverts in a different position.** The absolute threshold that worked for writing cut the correct answers first in search. A fixed axis and an axis that moves per query are not the same problem.
