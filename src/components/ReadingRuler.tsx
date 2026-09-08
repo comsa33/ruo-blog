@@ -84,7 +84,10 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
       // nothing to anchor to, and reading the hidden node would return 0 and
       // park the line off the top of the page. Fall back to a fixed height.
       const row = ruler.children[idx] as HTMLElement | undefined;
-      const visible = ruler.offsetParent !== null;
+      // offsetParent is null for any position: fixed element, visible or not,
+      // so it cannot answer this question — it silently reported the ruler as
+      // hidden at every width and pinned the line to the fallback height.
+      const visible = getComputedStyle(ruler).display !== 'none';
       const y =
         visible && row
           ? row.getBoundingClientRect().top + 0.5
