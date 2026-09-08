@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getPost, getAllParams, formatDate } from '@/lib/posts';
-import { Minimap } from '@/components/Minimap';
+import { ReadingRuler } from '@/components/ReadingRuler';
+import { TravelingDot } from '@/components/TravelingDot';
 import { site, t, type Lang } from '@/lib/site';
 import styles from './post.module.css';
 
@@ -46,9 +47,10 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
 
   return (
     <main className={styles.main}>
-      <Minimap label={t.contents[lang]} />
+      <ReadingRuler />
 
       <article className={styles.article}>
+        <TravelingDot />
         <header className={`${styles.header} rise`}>
           <div className={styles.kicker}>
             <span className={styles.type}>{t[post.type][lang]}</span>
@@ -63,7 +65,7 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
           {post.description && <p className={styles.description}>{post.description}</p>}
         </header>
 
-        <div className={`${styles.prose} rise`} style={{ '--i': 1 } as React.CSSProperties}>
+        <div data-prose className={`${styles.prose} rise`} style={{ '--i': 1 } as React.CSSProperties}>
           <Body />
         </div>
       </article>

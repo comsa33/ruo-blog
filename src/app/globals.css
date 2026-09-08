@@ -202,6 +202,24 @@ pre {
   mix-blend-mode: normal;
 }
 
+/*
+ * TravelingDot: the element currently hosting the dot slides its text right to
+ * make room (0.55em dot + 0.9em gap). Everything else stays flush left, so the
+ * dot reads as arriving rather than as a permanent bullet.
+ */
+/* On wide screens the dot hangs in the left margin and text stays put, which
+   is what DD does. Only when that margin is gone does the text make room. */
+[data-dot] {
+  padding-left: 0;
+  transition: padding-left 480ms var(--ease);
+}
+
+@media (max-width: 900px) {
+  [data-dot][data-dot-active] {
+    padding-left: 1.45em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

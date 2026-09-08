@@ -1,0 +1,48 @@
+/*
+ * Section dot.
+ *
+ * Measured from devouringdetails.com: the dot lives inside the heading as an
+ * absolutely positioned child at `left: -36px`, sized by an `--indicator-size`
+ * variable (24px beside a 32px section heading, 20px for the intro mark). It
+ * hangs in the left margin, so the heading text is not pushed. Below the width
+ * where that margin disappears it becomes inline and the text does move right.
+ *
+ * What DD does not do is animate between sections — each heading owns its own
+ * dot and `transition-duration` is 0s. Travelling between anchors is the
+ * behaviour from po24lio.com, kept here because it turns a static ornament
+ * into a position indicator.
+ */
+.dot {
+  --size: 14px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 5;
+  will-change: transform;
+}
+
+/* Glide only after the first placement, so the page never loads mid-flight. */
+.dot[data-ready='true'] {
+  transition:
+    transform 560ms var(--ease),
+    width 320ms var(--ease),
+    height 320ms var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot[data-ready='true'] {
+    transition: none;
+  }
+}
+
+/* Without a left margin to hang in, the dot would overlap the text. */
+@media (max-width: 900px) {
+  .dot {
+    display: none;
+  }
+}

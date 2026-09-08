@@ -88,6 +88,21 @@ with no import. **Prefer composing these over writing new components.**
 | `<Threshold>` | Cluster distributions against a threshold the reader can move. |
 | `<Playground>` | A parameter the reader drags, with consequences recomputed. |
 
+### Reading chrome — automatic, never authored
+
+These attach themselves to every post. Do not add them to MDX, and do not add
+per-post configuration for them.
+
+| Component | Behaviour |
+|---|---|
+| `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block) plus a horizontal guide line at 44vh. Hovering the ruler reveals section names and strengthens the line. Hidden below 1180px. |
+| `<TravelingDot>` | One accent dot that moves to the heading or caption the reader is on. Anchors are discovered from `h1/h2/h3/figcaption`, so nothing needs marking up. |
+
+Dot size is emphasis: `--indicator-size` is declared per level in
+`post.module.css` (h1 18px, h2 14px, h3 10px, figcaption 7px). Change it there,
+never inline. The dot hangs in the left margin and does not move the text;
+below 900px it goes inline and the text makes room instead.
+
 ### Prose furniture
 
 `<Compare>` before/after bars · `<Metrics>` + `<Metric>` headline numbers ·

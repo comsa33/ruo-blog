@@ -7,6 +7,22 @@
 .article {
   max-width: var(--prose);
   margin: 0 auto;
+  /* Anchor for the absolutely positioned section dot. */
+  position: relative;
+}
+
+/* Emphasis is carried by dot size — four levels tied to the type scale. */
+.article h1[data-dot] {
+  --indicator-size: 18px;
+}
+.article h2[data-dot] {
+  --indicator-size: 14px;
+}
+.article h3[data-dot] {
+  --indicator-size: 10px;
+}
+.article figcaption[data-dot] {
+  --indicator-size: 7px;
 }
 
 .header {

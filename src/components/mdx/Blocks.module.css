@@ -80,5 +80,7 @@
   font-size: 11.5px;
   line-height: 1.6;
   color: var(--ink-tertiary);
-  text-align: center;
+  /* Left aligned so the travelling dot has an edge to sit against, the way
+     DD anchors its labels to the bottom-left of a tile. */
+  text-align: left;
 }

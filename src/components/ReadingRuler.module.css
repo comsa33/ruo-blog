@@ -1,0 +1,151 @@
+/*
+ * Left-gutter ruler + reading line, adapted from devouringdetails.com.
+ *
+ * Measured from the original: 1px ticks, 8px gap, major ticks 40px in ink,
+ * minor ticks 24px in grey. There the ruler maps page sections; here it maps
+ * the blocks of the article, so the reader can see the shape of what is left.
+ *
+ * The horizontal line is the part that actually helps reading — it fixes the
+ * eye at one height instead of letting it drift down the column.
+ */
+
+.root {
+  /* Where the reading line sits. Slightly above centre reads better than 50%:
+     the eye leads the text it is about to read. */
+  --read-line: 44vh;
+}
+
+/* Both pieces are decoration for pointer-driven reading; below the width where
+   the gutter disappears they would sit on top of the text. */
+@media (max-width: 1180px) {
+  .root {
+    display: none;
+  }
+}
+
+/* ---------- horizontal reading line ---------- */
+
+.line {
+  position: fixed;
+  top: var(--read-line);
+  left: 0;
+  width: 100vw;
+  height: 1px;
+  background: var(--accent);
+  /* Full strength is too loud over a long article; it should register as a
+     guide, not as a rule. */
+  opacity: 0.28;
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-state);
+}
+
+/* While the pointer is on the ruler the guide asserts itself. */
+.rulerHover ~ .line,
+.root:has(.ruler:hover) .line {
+  opacity: 0.75;
+}
+
+.marker {
+  position: fixed;
+  top: var(--read-line);
+  left: 26px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--accent);
+  transform: translateY(-50%);
+  z-index: 22;
+  pointer-events: none;
+}
+
+/* ---------- ruler ---------- */
+
+.ruler {
+  position: fixed;
+  left: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.tick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 1px;
+  cursor: pointer;
+}
+
+.bar {
+  height: 1px;
+  flex: none;
+  background: var(--ink-tertiary);
+  width: 24px;
+  transition:
+    width var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out;
+}
+
+/* Major ticks mark a heading, minor ticks the blocks inside it. */
+.major .bar {
+  width: 40px;
+  background: var(--ink);
+}
+
+.active .bar {
+  background: var(--accent);
+  width: 44px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink-secondary);
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out,
+    color var(--dur-instant) ease-out;
+}
+
+/* The ruler behaves as one object: hovering anywhere reveals every heading. */
+@media (hover: hover) {
+  .ruler:hover .major .label {
+    opacity: 1;
+    transform: none;
+  }
+  .tick:hover .bar {
+    background: var(--accent);
+    width: 44px;
+  }
+  .tick:hover .label {
+    opacity: 1;
+    transform: none;
+    color: var(--ink);
+  }
+}
+
+.active .label {
+  opacity: 1;
+  transform: none;
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line {
+    display: none;
+  }
+  .marker {
+    display: none;
+  }
+}
