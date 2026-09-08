@@ -193,6 +193,10 @@ add a colour, add it to both blocks.
 
 ### Layout and type
 
+- The page is a grey field (`--bg-page`) with a lighter sheet of content laid
+  on it, square cornered, 80% of the viewport wide with a ~10% gutter either
+  side. Measured from the reference. The gutter collapses to zero below 1181px,
+  where the ruler is hidden and the sheet becomes the page.
 - Prose stays at `--prose` (680px). **Figures bleed to `--frame` (960px)** — this
   is automatic for any `<figure>` inside the article.
 - Type has three levels: 16px body, 21px h2, 30px title. Do not add a fourth.

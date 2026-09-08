@@ -17,9 +17,9 @@ export default async function LangLayout({
   if (!LANGS.includes(lang as Lang)) notFound();
 
   return (
-    <>
+    <div className="sheet">
       <Header lang={lang as Lang} />
       {children}
-    </>
+    </div>
   );
 }
