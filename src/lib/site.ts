@@ -25,7 +25,7 @@ export const t = {
   logHeading: { ko: '기록', en: 'Log' },
   contents: { ko: '목차', en: 'Contents' },
   backToIndex: { ko: '목록', en: 'Index' },
-  minutes: { ko: '분', en: 'min' },
+  minutes: { ko: '분', en: ' min' },
   empty: { ko: '아직 글이 없습니다.', en: 'Nothing here yet.' },
   copy: { ko: '복사', en: 'Copy' },
   copied: { ko: '복사됨', en: 'Copied' },

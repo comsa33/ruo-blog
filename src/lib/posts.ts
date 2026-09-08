@@ -10,6 +10,8 @@ export type PostMeta = {
   lang: Lang;
   title: string;
   description: string;
+  /** What the post is about, in the reader's words. Shown above the title. */
+  topic: string;
   /** ISO date, YYYY-MM-DD. */
   date: string;
   type: PostType;
@@ -24,13 +26,37 @@ export type PostMeta = {
  * formula gives wildly wrong numbers for Korean posts, which are our default.
  */
 function readingTime(body: string, lang: Lang): number {
-  const text = body
-    .replace(/```[\s\S]*?```/g, '')
+  // Component blocks carry data, not prose. They span many lines and contain
+  // `>` inside arrow functions, so a tag regex cannot remove them — track the
+  // block instead, from `<Capital` until the line that closes it.
+  const lines = body.replace(/```[\s\S]*?```/g, '').split('\n');
+  const prose: string[] = [];
+  let depth = 0;
+  let figures = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (depth === 0 && /^<[A-Z]/.test(trimmed)) {
+      depth = 1;
+      figures++;
+      if (/\/>$/.test(trimmed)) depth = 0;
+      continue;
+    }
+    if (depth > 0) {
+      if (/^\/>$/.test(trimmed) || /^<\/[A-Z]/.test(trimmed)) depth = 0;
+      continue;
+    }
+    prose.push(line);
+  }
+
+  const text = prose
+    .join('\n')
     .replace(/<[^>]+>/g, '')
     .trim();
-  const minutes =
+  const reading =
     lang === 'ko' ? text.replace(/\s/g, '').length / 500 : text.split(/\s+/).length / 220;
-  return Math.max(1, Math.round(minutes));
+  // An interactive figure is not free to read. Half a minute each is closer to
+  // the truth than pretending the diagrams take no time at all.
+  return Math.max(1, Math.round(reading + figures * 0.5));
 }
 
 function readPost(slug: string, lang: Lang): PostMeta | null {
@@ -47,6 +73,7 @@ function readPost(slug: string, lang: Lang): PostMeta | null {
     lang,
     title: String(data.title),
     description: String(data.description ?? ''),
+    topic: String(data.topic ?? ''),
     // gray-matter parses unquoted YAML dates into Date objects.
     date: data.date instanceof Date ? data.date.toISOString().slice(0, 10) : String(data.date),
     type: (data.type ?? 'note') as PostType,

@@ -53,16 +53,23 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
         <TravelingDot />
         <header className={`${styles.header} rise`}>
           <div className={styles.kicker}>
-            <span className={styles.type}>{t[post.type][lang]}</span>
-            <span>·</span>
-            <span>{formatDate(post.date, lang)}</span>
-            <span>·</span>
-            <span>
-              {post.readingTime} {t.minutes[lang]}
-            </span>
+            {post.topic && <span className={styles.topic}>{post.topic}</span>}
+            {post.tags.map((tag) => (
+              <span key={tag} className={styles.tag}>
+                {tag}
+              </span>
+            ))}
           </div>
           <h1 className={styles.title}>{post.title}</h1>
           {post.description && <p className={styles.description}>{post.description}</p>}
+          <div className={styles.meta}>
+            <span>{formatDate(post.date, lang)}</span>
+            <span aria-hidden>·</span>
+            <span>
+              {post.readingTime}
+              {t.minutes[lang]}
+            </span>
+          </div>
         </header>
 
         <div data-prose className={`${styles.prose} rise`} style={{ '--i': 1 } as React.CSSProperties}>

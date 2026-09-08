@@ -31,19 +31,54 @@
   margin-bottom: 40px;
 }
 
+/*
+ * Topic line. Measured from the reference: mono 13px, weight 400, uppercase,
+ * grey, letter-spacing normal, and no pills or badges anywhere. The first
+ * keyword is the subject; the rest are qualifiers and sit back a shade.
+ */
 .kicker {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  margin-bottom: 20px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: normal;
+}
+
+.topic {
+  color: var(--ink);
+  position: relative;
+}
+
+/* A hairline under the subject, in the accent — the only mark it gets. */
+.topic::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.tag {
+  color: var(--ink-tertiary);
+}
+
+.meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 22px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink-tertiary);
   font-variant-numeric: tabular-nums;
-  margin-bottom: 18px;
-}
-
-.kicker .type {
-  color: var(--accent);
 }
 
 .title {

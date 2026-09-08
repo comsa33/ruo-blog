@@ -22,6 +22,7 @@ function PostRow({ post, lang, i }: { post: PostMeta; lang: Lang; i: number }) {
     <li className="rise" style={{ '--i': i } as React.CSSProperties}>
       <Link href={`/${lang}/${post.slug}`} className={styles.row}>
         <div>
+          {post.topic && <span className={styles.rowTopic}>{post.topic}</span>}
           <h3 className={styles.rowTitle}>
             {post.title}
             <span className={styles.arrow} aria-hidden>
