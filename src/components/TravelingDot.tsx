@@ -6,8 +6,11 @@ import styles from './TravelingDot.module.css';
 /** Width of the slot a heading opens for the dot. Mirrors globals.css. */
 const PAD_EM = 1.35;
 
-/** Anchors the dot can land on, in the order it should consider them. */
-const ANCHOR_SELECTOR = 'h1[data-dot], h2[data-dot], h3[data-dot], figcaption[data-dot]';
+/**
+ * Below this scroll offset the reader is "at the top" and the dot rests on the
+ * brand mark in the header instead of on the title.
+ */
+const HOME_THRESHOLD = 8;
 
 /**
  * Marks every heading and figure caption in the article as a dot anchor, then
@@ -16,6 +19,10 @@ const ANCHOR_SELECTOR = 'h1[data-dot], h2[data-dot], h3[data-dot], figcaption[da
  *
  * Size is derived from the host's own type size, so a title gets a large dot
  * and a caption a small one without any per-post configuration.
+ *
+ * It starts on the brand mark in the header — the one accent in the chrome —
+ * and leaves the ring behind when the reader scrolls, so the same dot that
+ * names the site is the one walking down the page.
  */
 export function TravelingDot() {
   const ref = useRef<HTMLSpanElement>(null);
@@ -33,12 +40,61 @@ export function TravelingDot() {
 
     if (anchors.length < 2) return;
 
+    // The brand mark in the header. Marked from the Header component so this
+    // file does not have to know its class name.
+    const home = document.querySelector<HTMLElement>('[data-dot-home]');
+
+    const ball = dot.firstElementChild as HTMLElement | null;
+
     let frame = 0;
     let ready = false;
     let currentHost: HTMLElement | null = null;
+    let lastX = NaN;
+    let lastY = NaN;
+
+    /**
+     * Move the dot, and if this is a real journey rather than a nudge, let the
+     * ball deform along the line of travel: it gathers itself, stretches in
+     * flight, lands with a squash and settles. The outer element only ever
+     * translates; the inner one only ever deforms, so the two never fight.
+     */
+    const moveTo = (x: number, y: number) => {
+      dot.style.transform = `translate(${x}px, ${y}px)`;
+      const dx = x - lastX;
+      const dy = y - lastY;
+      lastX = x;
+      lastY = y;
+      if (!ready || !ball || !(Math.hypot(dx, dy) >= 6)) return;
+      ball.style.setProperty('--angle', `${Math.atan2(dy, dx)}rad`);
+      ball.removeAttribute('data-squish');
+      void ball.offsetWidth; // restart the animation
+      ball.setAttribute('data-squish', '');
+    };
+
+    const markReady = () => {
+      if (ready) return;
+      // First placement lands without animating; every later one glides.
+      ready = true;
+      requestAnimationFrame(() => dot.setAttribute('data-ready', 'true'));
+    };
 
     const place = () => {
       frame = 0;
+      const parent = article.getBoundingClientRect();
+
+      // At the very top the dot sits on the brand mark, exactly over it, and
+      // no heading holds a slot open.
+      if (home && window.scrollY < HOME_THRESHOLD) {
+        currentHost?.removeAttribute('data-dot-active');
+        currentHost = null;
+        home.setAttribute('data-dot-state', 'home');
+        const h = home.getBoundingClientRect();
+        dot.style.setProperty('--size', `${h.width}px`);
+        moveTo(h.left - parent.left, h.top - parent.top);
+        markReady();
+        return;
+      }
+      home?.setAttribute('data-dot-state', 'away');
 
       // The anchor the reader is on is the last one above the reading line.
       const lineY = window.innerHeight * 0.44;
@@ -55,7 +111,6 @@ export function TravelingDot() {
       }
 
       const a = host.getBoundingClientRect();
-      const parent = article.getBoundingClientRect();
       const cs = getComputedStyle(host);
       const fontSize = parseFloat(cs.fontSize);
       const lineHeight = parseFloat(cs.lineHeight) || fontSize * 1.4;
@@ -72,15 +127,12 @@ export function TravelingDot() {
       const offset = (slot - size) / 2;
 
       dot.style.setProperty('--size', `${size}px`);
-      dot.style.transform = `translate(${Math.round(a.left - parent.left + offset)}px, ${Math.round(
-        a.top - parent.top + (lineHeight - size) / 2,
-      )}px)`;
+      moveTo(
+        Math.round(a.left - parent.left + offset),
+        Math.round(a.top - parent.top + (lineHeight - size) / 2),
+      );
 
-      if (!ready) {
-        // First placement lands without animating; every later one glides.
-        ready = true;
-        requestAnimationFrame(() => dot.setAttribute('data-ready', 'true'));
-      }
+      markReady();
     };
 
     const schedule = () => {
@@ -100,6 +152,7 @@ export function TravelingDot() {
       window.removeEventListener('resize', schedule);
       ro.disconnect();
       if (frame) cancelAnimationFrame(frame);
+      home?.removeAttribute('data-dot-state');
       anchors.forEach((el) => {
         el.removeAttribute('data-dot');
         el.removeAttribute('data-dot-active');
@@ -107,5 +160,9 @@ export function TravelingDot() {
     };
   }, []);
 
-  return <span ref={ref} className={styles.dot} aria-hidden="true" />;
+  return (
+    <span ref={ref} className={styles.dot} aria-hidden="true">
+      <span className={styles.ball} />
+    </span>
+  );
 }

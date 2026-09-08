@@ -27,7 +27,7 @@ export function Header({ lang }: { lang: Lang }) {
     <header className={`${styles.header} ${scrolled ? styles.scrolled : ''}`}>
       <div className={styles.inner}>
         <Link href={`/${lang}`} className={styles.brand}>
-          <span className={styles.dot} aria-hidden />
+          <span className={styles.dot} data-dot-home aria-hidden />
           {lang === 'ko' ? site.authorKo : site.author}
         </Link>
 

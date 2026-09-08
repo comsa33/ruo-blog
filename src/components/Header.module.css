@@ -49,6 +49,13 @@
   transform: scale(1.25);
 }
 
+/* On a post page the travelling dot starts here and covers this exactly;
+   once it leaves, what stays behind is the ring. */
+.dot[data-dot-state] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
 .nav {
   display: flex;
   align-items: center;

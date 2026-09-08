@@ -19,11 +19,17 @@
   left: 0;
   width: var(--size);
   height: var(--size);
-  border-radius: 50%;
-  background: var(--accent);
   pointer-events: none;
-  z-index: 5;
+  /* Above the sticky header, so the flight from the brand mark is not seen
+     through its backdrop. */
+  z-index: 60;
   will-change: transform;
+}
+
+/* Nothing shows until the first placement — otherwise the dot flashes at the
+   article's top-left corner for a frame. */
+.dot:not([data-ready='true']) {
+  opacity: 0;
 }
 
 /* Glide only after the first placement, so the page never loads mid-flight. */
@@ -34,9 +40,57 @@
     height 320ms var(--ease);
 }
 
+/*
+ * The ball itself. A soft body: on every journey it gathers, stretches along
+ * the line of travel, lands with a squash and settles — rotated so the
+ * stretch always points where it is going. Amplitudes stay under a third so
+ * it reads as give, not as a cartoon.
+ */
+.ball {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: rotate(var(--angle, 0rad));
+  will-change: transform;
+}
+
+.ball[data-squish] {
+  animation: squish var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes squish {
+  0% {
+    transform: rotate(var(--angle, 0rad)) scale(1, 1);
+  }
+  /* gathers itself before the jump */
+  10% {
+    transform: rotate(var(--angle, 0rad)) scale(0.84, 1.14);
+  }
+  /* stretched in flight */
+  30% {
+    transform: rotate(var(--angle, 0rad)) scale(1.34, 0.76);
+  }
+  /* lands, squashes */
+  62% {
+    transform: rotate(var(--angle, 0rad)) scale(0.88, 1.1);
+  }
+  /* one rebound, then still */
+  82% {
+    transform: rotate(var(--angle, 0rad)) scale(1.05, 0.96);
+  }
+  100% {
+    transform: rotate(var(--angle, 0rad)) scale(1, 1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dot[data-ready='true'] {
     transition: none;
+  }
+  .ball[data-squish] {
+    animation: none;
   }
 }
 
