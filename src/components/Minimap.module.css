@@ -1,0 +1,97 @@
+/*
+ * Adapted from Rauno Freiberg's "Line Minimap": the table of contents is drawn
+ * as a rhythm of lines rather than a list of words. Labels stay hidden until
+ * the pointer arrives, so the default state is pure texture.
+ */
+.wrap {
+  position: fixed;
+  top: 50%;
+  right: 28px;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 0;
+}
+
+/* Below the point where the minimap would overlap prose, hide it entirely. */
+@media (max-width: 1180px) {
+  .wrap {
+    display: none;
+  }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  /* Padding creates the hit area; the visual gap comes from the line itself. */
+  padding: 5px 0;
+  cursor: pointer;
+}
+
+.line {
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--line-strong);
+  flex: none;
+  /* Never exceed 200ms for an interaction. */
+  transition:
+    width var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out,
+    opacity var(--dur-instant) ease-out;
+}
+
+.h2 .line {
+  width: 20px;
+}
+.h3 .line {
+  width: 12px;
+  opacity: 0.7;
+}
+
+.active .line {
+  background: var(--accent);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  opacity: 0;
+  transform: translateX(4px);
+  pointer-events: none;
+  transition:
+    opacity var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out;
+}
+
+/* Hovering anywhere on the map reveals every label at once — the map behaves
+   as one object, not as twelve independent rows. */
+@media (hover: hover) {
+  .wrap:hover .label {
+    opacity: 1;
+    transform: none;
+  }
+  .wrap:hover .line {
+    width: 8px;
+  }
+  .item:hover .label {
+    color: var(--ink);
+  }
+  .item:hover .line {
+    background: var(--accent);
+  }
+}
+
+.active .label {
+  color: var(--ink);
+}

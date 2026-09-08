@@ -1,0 +1,222 @@
+/*
+ * Sequence diagram. Not a Mermaid render: every message is a step you can walk
+ * through, and the diagram dims everything that is not the current step.
+ *
+ * Motion follows the measured house rules — 150ms for state, and the active
+ * arrow draws itself with stroke-dashoffset (his "drawPath").
+ */
+.wrap {
+  margin: 36px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.stage {
+  padding: 18px 8px 8px;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ---- actors ---- */
+.actorBox {
+  fill: var(--bg);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  transition: stroke var(--dur-instant) ease-out;
+}
+
+.actorActive .actorBox {
+  stroke: var(--accent);
+}
+
+.actorLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--ink-secondary);
+  transition: fill var(--dur-instant) ease-out;
+}
+
+.actorActive .actorLabel {
+  fill: var(--ink);
+}
+
+.lifeline {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+/* ---- messages ---- */
+.msg {
+  cursor: pointer;
+}
+
+.msgLine {
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+  fill: none;
+  transition:
+    stroke var(--dur-instant) ease-out,
+    opacity var(--dur-instant) ease-out;
+}
+
+.msgHead {
+  fill: var(--line-strong);
+  transition:
+    fill var(--dur-instant) ease-out,
+    opacity var(--dur-instant) ease-out;
+}
+
+.msgLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--ink-tertiary);
+  transition:
+    fill var(--dur-instant) ease-out,
+    opacity var(--dur-instant) ease-out;
+}
+
+/* Everything that is not the current step recedes rather than disappears. */
+.dim .msgLine,
+.dim .msgHead,
+.dim .msgLabel {
+  opacity: 0.28;
+}
+
+.current .msgLine {
+  stroke: var(--accent);
+  stroke-width: 1.75;
+  /* Redrawn on each step change; see the key prop in the component. */
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: drawPath 420ms var(--ease-out) forwards;
+}
+
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.current .msgHead {
+  fill: var(--accent);
+  animation: fade 200ms 260ms ease-out both;
+}
+
+.current .msgLabel {
+  fill: var(--ink);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  .msg:hover .msgLine {
+    stroke: var(--ink-secondary);
+  }
+  .msg:hover .msgLabel {
+    fill: var(--ink);
+  }
+}
+
+/* ---- controls ---- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  transition:
+    color var(--dur-instant) ease-out,
+    border-color var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--line-strong);
+    background: var(--bg-hover);
+  }
+}
+
+/* Press scales to 0.96, never to 0.8. */
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ticks {
+  display: flex;
+  gap: 3px;
+  margin-left: 2px;
+}
+
+.tick {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transition:
+    background-color var(--dur-instant) ease-out,
+    width var(--dur-instant) ease-out;
+}
+
+.tickOn {
+  background: var(--accent);
+  width: 22px;
+}
+
+.counter {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- note ---- */
+.note {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-secondary);
+  min-height: 62px;
+}
+
+.noteLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+.noteBody {
+  animation: fadeInBlur 320ms var(--ease-out) both;
+}

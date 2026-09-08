@@ -1,0 +1,85 @@
+/*
+ * Before/after as two bars on a shared scale. Adapted from the "Time Machine"
+ * idea: the value of a change is easier to feel than to read.
+ */
+.wrap {
+  margin: 32px 0;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+  margin-bottom: 18px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.row + .row {
+  margin-top: 12px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-secondary);
+  text-align: right;
+}
+
+.track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--ink-tertiary);
+  /* Animated in on reveal; the delay is what makes it read as a comparison. */
+  width: 0;
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.after .fill {
+  background: var(--accent);
+  transition-delay: 120ms;
+}
+
+.visible .fill {
+  width: var(--w);
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.delta {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+
+.delta strong {
+  color: var(--accent);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}

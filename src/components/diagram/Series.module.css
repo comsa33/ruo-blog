@@ -1,0 +1,123 @@
+/* Line chart. Paths draw themselves once on reveal, then hold still — a chart
+   that keeps animating next to prose is noise. */
+.wrap {
+  margin: 34px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 20px 22px 14px;
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+  margin-bottom: 14px;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.axisText {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  fill: var(--ink-tertiary);
+}
+
+.path {
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: var(--ink-tertiary);
+  opacity: 0.55;
+  transition: opacity var(--dur-instant) ease-out;
+}
+
+.accent {
+  stroke: var(--accent);
+  stroke-width: 2.25;
+  opacity: 1;
+}
+
+.drawn {
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: draw 900ms var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.dim {
+  opacity: 0.15;
+}
+
+.cursorLine {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.dot {
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+  cursor: default;
+  transition: color var(--dur-instant) ease-out;
+}
+
+.legendItem:hover {
+  color: var(--ink);
+}
+
+.legendSwatch {
+  width: 14px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--ink-tertiary);
+  opacity: 0.55;
+}
+
+.legendAccent .legendSwatch {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.legendValue {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-tertiary);
+}

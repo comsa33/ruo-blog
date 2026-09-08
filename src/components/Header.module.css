@@ -1,0 +1,86 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-fast) var(--ease-state);
+}
+
+.scrolled {
+  border-bottom-color: var(--line);
+}
+
+.inner {
+  width: 100%;
+  max-width: var(--frame);
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: auto;
+  user-select: none;
+}
+
+/* The accent dot is the one piece of colour in the chrome. */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  transition: transform var(--dur-instant) ease-out;
+}
+
+.brand:hover .dot {
+  transform: scale(1.25);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+
+.navItem {
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out;
+}
+
+/* No dead areas between items: padding grows, gaps do not. */
+@media (hover: hover) {
+  .navItem:hover {
+    color: var(--ink);
+    background: var(--bg-hover);
+  }
+}
+
+.active {
+  color: var(--ink);
+}
+
+.sep {
+  width: 1px;
+  height: 14px;
+  background: var(--line-strong);
+  margin: 0 4px;
+}

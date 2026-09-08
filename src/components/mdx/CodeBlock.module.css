@@ -1,0 +1,76 @@
+.wrap {
+  position: relative;
+  margin: 28px 0;
+}
+
+.wrap pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+
+.wrap code {
+  font-size: inherit;
+}
+
+/* rehype-pretty-code emits both themes; show the one matching the scheme. */
+.wrap :global(span[data-line]) {
+  display: block;
+}
+
+.wrap :global(code[data-theme*=' ']) span,
+.wrap :global(code[data-theme*=' ']) {
+  color: var(--shiki-light);
+}
+
+[data-theme='dark'] .wrap :global(code[data-theme*=' ']) span,
+[data-theme='dark'] .wrap :global(code[data-theme*=' ']) {
+  color: var(--shiki-dark);
+}
+
+.copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-secondary);
+  opacity: 0;
+  transition:
+    opacity var(--dur-instant) ease-out,
+    color var(--dur-instant) ease-out,
+    border-color var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .wrap:hover .copy {
+    opacity: 1;
+  }
+  .copy:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+}
+
+.copy:focus-visible {
+  opacity: 1;
+}
+
+/* Feedback lands on the trigger itself, never as a toast. */
+.copied {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+}

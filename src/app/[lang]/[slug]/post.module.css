@@ -1,0 +1,206 @@
+.main {
+  max-width: var(--frame);
+  margin: 0 auto;
+  padding: 0 24px 160px;
+}
+
+.article {
+  max-width: var(--prose);
+  margin: 0 auto;
+}
+
+.header {
+  padding: 80px 0 40px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 40px;
+}
+
+.kicker {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-tertiary);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 18px;
+}
+
+.kicker .type {
+  color: var(--accent);
+}
+
+.title {
+  font-size: 30px;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+
+.description {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--ink-secondary);
+}
+
+/* ---------- Prose ---------- */
+
+.prose {
+  font-size: 16px;
+  line-height: 1.85;
+}
+
+.prose > * + * {
+  margin-top: 20px;
+}
+
+.prose h2 {
+  margin-top: 56px;
+  font-size: 21px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.prose h3 {
+  margin-top: 36px;
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.prose p {
+  color: var(--ink);
+}
+
+.prose strong {
+  font-weight: 500;
+  /* Weight alone is too quiet at 500; a hairline underline carries emphasis
+     without the layout shift that a weight change on hover would cause. */
+  box-shadow: inset 0 -0.4em 0 var(--accent-soft);
+}
+
+.prose a {
+  color: var(--accent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: border-color var(--dur-instant) ease-out;
+}
+
+.prose a:hover {
+  border-bottom-color: var(--accent);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 22px;
+}
+
+.prose li + li {
+  margin-top: 8px;
+}
+
+.prose li::marker {
+  color: var(--ink-tertiary);
+}
+
+.prose blockquote {
+  padding-left: 18px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink-secondary);
+}
+
+/* Inline code only — block code is styled by CodeBlock. */
+.prose :not(pre) > code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  border: 1px solid var(--line);
+  font-size: 0.88em;
+  word-break: break-all;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose th,
+.prose td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prose th {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 48px 0;
+}
+
+.prose h2,
+.prose h3 {
+  scroll-margin-top: calc(var(--header-h) + 24px);
+}
+
+/* ---------- Footer ---------- */
+
+.footer {
+  max-width: var(--prose);
+  margin: 72px auto 0;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-tertiary);
+}
+
+.back {
+  transition: color var(--dur-instant) ease-out;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+/* ---------- Media bleed ----------
+ * Diagrams carry more information per pixel than prose does, so they break out
+ * of the reading column up to the page frame. Text stays at --prose because a
+ * 960px measure is unreadable; the figures do not have that constraint.
+ */
+.prose figure {
+  width: min(var(--frame), calc(100vw - 48px));
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Tables read as data, so they get a little extra room too — but not the full
+   frame, which would detach them from the sentence that introduces them. */
+.prose table {
+  width: min(calc(var(--prose) + 120px), calc(100vw - 48px));
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 900px) {
+  .prose figure,
+  .prose table {
+    width: 100%;
+    margin-left: 0;
+    transform: none;
+  }
+}

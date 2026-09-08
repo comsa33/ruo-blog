@@ -1,0 +1,120 @@
+/* A single bar that shows what a number is actually made of. Hovering a segment
+   pushes the others back rather than hiding them. */
+.wrap {
+  margin: 34px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 20px 22px 18px;
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+  margin-bottom: 16px;
+}
+
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 34px;
+  margin-bottom: 16px;
+}
+
+.seg {
+  border-radius: 4px;
+  background: var(--ink-tertiary);
+  cursor: pointer;
+  transition:
+    opacity var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out;
+  transform-origin: center bottom;
+}
+
+.seg:first-child {
+  background: var(--accent);
+}
+
+.dimmed {
+  opacity: 0.25;
+}
+
+.active {
+  transform: scaleY(1.14);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) ease-out,
+    opacity var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: var(--bg-hover);
+  }
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ink-tertiary);
+}
+
+.row:first-child .swatch {
+  background: var(--accent);
+}
+
+.label {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-secondary);
+}
+
+.pct {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-tertiary);
+  width: 44px;
+  text-align: right;
+}
+
+.note {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink-secondary);
+  min-height: 40px;
+}
+
+.noteBody {
+  animation: fadeInBlur 280ms var(--ease-out) both;
+}

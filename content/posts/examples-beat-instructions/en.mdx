@@ -1,0 +1,236 @@
+---
+title: 'Examples beat instructions'
+description: 'Memories extracted from Korean conversations were being stored in English. No placement of the instruction helped, because the instruction was never the problem.'
+date: 2026-09-08
+type: note
+tags: [llm, prompt, memory, korean]
+---
+
+I was building long-term memory for an agent. Facts a user drops during a conversation get extracted, stored, and recalled in later sessions.
+
+One day I opened the store and read this:
+
+> User asked why pgvector 0.8 is necessary for service deployment.
+
+The conversation had been in Korean from beginning to end.
+
+## Where this happens
+
+Structure first. The memory service does not own the transcript. The transcript lives in exactly one place, and this service holds only **summaries, cursors, and memories**.
+
+<Structure
+  nodes={[
+    { id: 'user', label: 'User', col: 0, row: 0 },
+    { id: 'agent', label: 'Agent', col: 1, row: 0, note: 'Assembles the prompt each turn. Memories are injected here.' },
+    { id: 'logs', label: 'Transcript store', sub: 'source of truth', col: 2, row: 0, note: 'The only original copy. The memory service never replicates it; it re-reads on demand.' },
+    { id: 'queue', label: 'Signal queue', sub: 'stream', col: 1, row: 1, note: 'Carries only the fact that a turn happened. It never carries the content.' },
+    { id: 'worker', label: 'Ingest worker', col: 2, row: 1, accent: true, note: 'The subject of this post. Where conversations become memories, and where the extraction prompt runs.' },
+    { id: 'store', label: 'Memory store', sub: 'vector + ledger', col: 3, row: 1, note: 'Extracted memories and their provenance. No transcripts.' },
+  ]}
+  edges={[
+    { from: 'user', to: 'agent' },
+    { from: 'agent', to: 'logs', label: 'write' },
+    { from: 'agent', to: 'queue', label: 'signal', dashed: true },
+    { from: 'queue', to: 'worker' },
+    { from: 'worker', to: 'logs', label: 're-read' },
+    { from: 'worker', to: 'store', label: 'extract' },
+    { from: 'store', to: 'agent', label: 'recall' },
+  ]}
+  hint="Hover a node to reveal its connections."
+/>
+
+Not replicating the transcript was the best early decision we made. Retention, deletion requests, and the boundary of personal data all stay the problem of one store. The cost is that the worker has to re-read the original every time.
+
+## Why per-turn extraction does not work
+
+The first design was simple: a turn arrives, extract that turn.
+
+Counting tokens killed it.
+
+<Breakdown
+  caption="What one extraction call sends"
+  unit=" tokens"
+  segments={[
+    { label: 'Fixed extraction prompt', value: 7606, note: 'Identical on every call regardless of the conversation. 80% of the input.' },
+    { label: 'Previous 5 turns', value: 965, note: 'Context. Capped, so it does not grow with conversation length.' },
+    { label: 'Existing memories (20)', value: 800, note: 'Included to prevent storing duplicates.' },
+    { label: 'The actual new turn', value: 193, note: 'The only thing we are here to process. 2% of the input.' },
+  ]}
+  hint="Hover a segment or a row for detail."
+/>
+
+We were resending 98% to process 2%. When fixed cost dominates, there is one answer: **batch, and share the fixed cost across turns.**
+
+<Playground
+  caption="Cost of processing 1,000 turns by batch size"
+  param={{ label: 'Turns per batch', initial: 5 }}
+  rows={Array.from({ length: 20 }, (_, i) => {
+    const n = i + 1;
+    const batches = Math.ceil(1000 / n);
+    const total = (7606 + 965 + 800 + 193 * n) * batches;
+    const base = (7606 + 965 + 800 + 193) * 1000;
+    return {
+      value: n,
+      results: [
+        { label: 'Extraction calls', value: batches.toLocaleString() },
+        { label: 'Total input tokens', value: (total / 1000000).toFixed(2) + 'M' },
+        { label: 'vs per-turn', value: (base / total).toFixed(1) + '× cheaper', highlight: true },
+      ],
+    };
+  })}
+/>
+
+Batches of five cut it by 4.6×. Push the slider further and it keeps improving, but the returns fall off a cliff. Sharing the fixed cost pays out early; after that you are only adding latency before a memory becomes available. Sessions were the natural unit anyway, and five turns sat closest to how the service was actually used.
+
+<Sequence
+  caption="Ingest flow"
+  actors={['Agent', 'Queue', 'Worker', 'Transcripts', 'Memory store']}
+  steps={[
+    { from: 'Agent', to: 'Queue', label: 'turn happened', async: true, note: 'A signal every turn, but never the content. The queue only says that something occurred.' },
+    { from: 'Queue', to: 'Worker', label: 'wake', note: 'The worker increments a pending count on the cursor and does nothing else until a threshold is crossed.' },
+    { from: 'Worker', to: 'Worker', label: 'wait for N turns / idle', note: 'It acts once N turns accumulate or the conversation goes quiet. This wait is the mechanism that shares the fixed cost.' },
+    { from: 'Worker', to: 'Transcripts', label: 'read after cursor', note: 'It does not trust what the queue delivered; it re-reads the original. A worker that dies resumes from the same place.' },
+    { from: 'Transcripts', to: 'Worker', label: 'return turns', note: 'Capped, so the first ingest of a conversation without a cursor cannot drag in hundreds of turns.' },
+    { from: 'Worker', to: 'Worker', label: 'mask, then extract', note: 'Personal data is removed before the model sees anything. If masking fails, the batch fails — it never falls back to raw text.' },
+    { from: 'Worker', to: 'Memory store', label: 'store', note: 'The cursor moves only after the write succeeds. The other order loses failed ranges silently.' },
+  ]}
+/>
+
+## No placement of the instruction worked
+
+If fixed cost is 80%, batching is not the only lever. **You can shrink the fixed cost itself.** Reading that prompt is how I ran into the language bug.
+
+The first attempt was to just say it: write in the same language as the input. Four conditions:
+
+| Condition | Instruction placement | Result |
+|---|---|---|
+| A | 8 lines at the end of the user prompt | English |
+| B | End of the system prompt, forcefully | English |
+| C | Start of the system prompt, forcefully | English |
+| E | Minimal prompt with no examples + one line | **Korean** |
+
+A, B and C all failed and only E passed. That was the answer. Placement was never the variable. What E removed was not a position but the **examples**.
+
+## The cause was fourteen examples
+
+The prompt was 33,661 characters and contained fourteen English few-shot examples. In that entire prompt, the word `language` appeared **zero times**. Not one Korean character either.
+
+The model had not ignored the instruction. It read it, and then fourteen consecutive demonstrations of "take Korean, write English" outvoted a single line of prose.
+
+<Callout label="A related discovery" accent>
+The previous version of the open-source memory engine we were using had `record the facts in the same language` written into the prompt body. The next version moved it behind an option, so it silently left the default behaviour. It was not in the upgrade notes.
+</Callout>
+
+## Same input, different prompt
+
+I cut the examples to three and made one of them a Korean input/output pair. The language rule is now carried by **demonstration**, not by a sentence.
+
+<Transform
+  caption="Only the prompt changes; the input is identical"
+  inputLabel="Input — Korean conversation"
+  input={[
+    { speaker: 'user', text: '우리 서비스 배포할 때 pgvector 0.8 이 꼭 필요한 이유가 뭐였지?' },
+    { speaker: 'assistant', text: 'HNSW 가 post-filter 라서 스코프 필터가 강하면 결과가 모자랍니다. 0.8 의 iterative index scan 이 그걸 해결합니다.' },
+  ]}
+  outputLabel="Extracted memories"
+  variants={[
+    {
+      key: 'old',
+      label: 'Before · 33,661 chars · 14 English examples',
+      output: [{ text: 'User asked why pgvector 0.8 is necessary for service deployment.' }],
+      verdict: 'Stored in English from a Korean conversation — and the technical fact the assistant supplied was dropped entirely.',
+      bad: true,
+    },
+    {
+      key: 'new',
+      label: 'After · 3,549 chars · includes a Korean example',
+      output: [
+        { attr: 'user', text: '사용자는 서비스 배포에 pgvector 0.8 이 필요한 이유를 확인했다.' },
+        { attr: 'assistant', text: 'HNSW 는 post-filter 방식이라 스코프 필터가 강하면 결과 수가 모자라는데, pgvector 0.8 의 iterative index scan 이 이 문제를 해결한다.' },
+      ],
+      verdict: 'Language preserved, and attribution split correctly between speakers.',
+    },
+  ]}
+/>
+
+## Measurements
+
+Two rounds on synthetic data, then a third on six real conversation threads. A/B order was reversed and run twice to cancel position bias.
+
+<Compare
+  caption="Prompt length"
+  beforeLabel="Before"
+  afterLabel="After"
+  before={33661}
+  after={3549}
+  beforeText="33,661 chars"
+  afterText="3,549 chars"
+  note="A <strong>9.5× reduction</strong>. The output schema was left untouched; only guidelines and examples were compressed."
+/>
+
+<Compare
+  caption="Input tokens per extraction (mean over 6 real threads)"
+  beforeLabel="Before"
+  afterLabel="After"
+  before={12810}
+  after={6112}
+  beforeText="12,810"
+  afterText="6,112"
+  note="<strong>6,698 tokens</strong> saved per call — 52.3%. The ratio looks modest because these threads had unusually long bodies, which dilutes the prompt's share."
+/>
+
+<Metrics>
+  <Metric value="50% → 100%" label="Korean preserved (3/6 → 6/6)" />
+  <Metric value="9 : 3" label="Quality judgement, compact wins" />
+  <Metric value="97 → 69" label="Extractions. Read as less over-splitting" />
+</Metrics>
+
+The number that hurt was 50%. The English-extraction rate I believed until then was 13.4%, measured on synthetic data. Reality was nearly four times worse.
+
+## What came along with it
+
+Rewriting the examples was also a chance to encode two contaminations that had been sitting there.
+
+The first is **recall re-ingestion**. A user asks "what did I say I liked?", the agent lists stored memories back, and that listing gets extracted as new facts. Copies of the same fact multiply every time the topic comes up.
+
+The second is **absence statements**. "There is no record of that" was being stored as a memory that there is no record. A lookup result is not a memory.
+
+| Contamination | Before | After |
+|---|---|---|
+| Recall re-ingestion | 2/7 | 0/7 |
+| Absence statements | 5/7 | 0/7 |
+| Attribution accuracy | no regression | no regression |
+
+How fast copies actually accumulate only shows up across sessions. Fifteen consecutive sessions, counting cumulative duplicates:
+
+<Series
+  caption="Duplicate copies accumulating across sessions"
+  xLabel="session"
+  yLabel="cumulative"
+  series={[
+    { name: 'No suppression', values: [0, 1, 4, 6, 6, 9, 11, 12, 14, 19, 20, 22, 25, 30, 33] },
+    { name: 'First pass', values: [4, 7, 10, 11, 11, 11, 12, 13, 13, 16, 16, 17, 17, 17, 17] },
+    { name: 'Small-model reference', values: [0, 0, 0, 1, 1, 1, 3, 3, 5, 7, 7, 7, 7, 7, 7] },
+    { name: 'Final', values: [1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3], accent: true },
+  ]}
+/>
+
+Without suppression, copies grow linearly. What matters is less that the final line is low and more that it **flattens early**: restating the same fact stops producing a new copy. Legitimate facts held at 22 of 24 throughout.
+
+## What I could not fix
+
+It also became clear what a prompt cannot do.
+
+The agent suggests "navy is a safe choice", the user says nothing at all, and "the user prefers navy" gets stored. Instructions did not stop it. Extra examples did not. A dedicated non-response example did not. Three attempts, three failures.
+
+Fabricating decisions that were never made is fully blocked by rules now. But **whose opinion a stated thing belongs to** is not something a prompt adjudicates. That belongs in a filtering layer after ingestion.
+
+## What is left
+
+Three things.
+
+**For a model, an example is a stronger signal than an instruction.** When a prompt contains both a rule and a demonstration that contradict each other, the demonstration wins. So trying to fix it by strengthening the instruction will keep failing. Find the contradicting demonstration instead.
+
+**Synthetic benchmarks only fix the order of magnitude.** The distance between 13.4% and 50% is that lesson. Using synthetic data to place a threshold is fine; treating that number as evidence about production is not.
+
+**A long prompt is both a cost and a bug surface.** Nobody knew that `language` appeared zero times in 33,661 characters. Shrinking it was the act of reading it, and the bug was found while reading.

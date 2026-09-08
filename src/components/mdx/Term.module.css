@@ -1,0 +1,57 @@
+/*
+ * Adapted from "Word Lookup": a jargon term explains itself in place, so the
+ * reader never has to leave the sentence.
+ */
+.term {
+  position: relative;
+  border-bottom: 1px dashed var(--ink-tertiary);
+  cursor: help;
+  transition: border-color var(--dur-instant) ease-out;
+}
+
+.term:hover,
+.term:focus-visible {
+  border-bottom-color: var(--accent);
+}
+
+.pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 30;
+  width: max-content;
+  max-width: 280px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+
+  /* Scale in from ~0.94, never from 0. Blur resolves as it settles. */
+  opacity: 0;
+  transform: translateX(-50%) scale(0.94);
+  filter: blur(2px);
+  transition:
+    opacity var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out,
+    filter var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .term:hover .pop {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+    filter: blur(0);
+  }
+}
+
+.term:focus-visible .pop {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  filter: blur(0);
+}
