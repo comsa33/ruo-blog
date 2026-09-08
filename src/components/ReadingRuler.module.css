@@ -27,8 +27,10 @@
 .line {
   position: fixed;
   top: var(--line-y);
-  left: 0;
-  width: 100vw;
+  /* Starts at the ruler, not at the window edge — the line reads as coming
+     out of the active tick. Measured at 32px on the reference. */
+  left: 32px;
+  right: 0;
   height: 1px;
   background: var(--accent);
   opacity: 0.26;
@@ -150,17 +152,20 @@
 .action {
   position: fixed;
   top: var(--line-y);
-  right: 0;
+  /* Measured: 96px in from the right on a 1440 viewport — the button sits
+     just past the content edge, not jammed against the window. */
+  right: 96px;
   z-index: 23;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 30px;
-  padding: 0 12px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 0;
   background: var(--accent);
   color: var(--on-accent);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: normal;
@@ -198,7 +203,12 @@
     display: none;
   }
   .line {
+    left: 0;
     opacity: 0.55;
+  }
+  /* The margin the button was insetting into is gone; keep a gutter instead. */
+  .action {
+    right: 16px;
   }
 }
 
