@@ -16,10 +16,13 @@ const MAX_TICKS = 42;
 const READ_AT = 0.42;
 /** Rows either side of the pointer that respond to it. */
 const FALLOFF = 4.5;
+/** Where the line sits when there is no ruler to anchor it to. */
+const FIXED_LINE = 0.62;
 
-export function ReadingRuler() {
+export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLabel: string }) {
   const [ticks, setTicks] = useState<Tick[]>([]);
   const [active, setActive] = useState(0);
+  const [atEnd, setAtEnd] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const rulerRef = useRef<HTMLElement>(null);
@@ -76,11 +79,21 @@ export function ReadingRuler() {
       }
       setActive(idx);
 
+      // With a ruler on screen the line is drawn at the active tick, so the
+      // two always meet. Without one — narrow screens hide it — there is
+      // nothing to anchor to, and reading the hidden node would return 0 and
+      // park the line off the top of the page. Fall back to a fixed height.
       const row = ruler.children[idx] as HTMLElement | undefined;
-      if (row) {
-        const y = row.getBoundingClientRect().top + 0.5;
-        rootRef.current?.style.setProperty('--line-y', `${Math.round(y)}px`);
-      }
+      const visible = ruler.offsetParent !== null;
+      const y =
+        visible && row
+          ? row.getBoundingClientRect().top + 0.5
+          : window.innerHeight * FIXED_LINE;
+      rootRef.current?.style.setProperty('--line-y', `${Math.round(y)}px`);
+
+      // Once the last section is reached the action turns into "back to top".
+      const doc = document.documentElement;
+      setAtEnd(window.scrollY + window.innerHeight >= doc.scrollHeight - 240);
     };
 
     build();
@@ -145,9 +158,25 @@ export function ReadingRuler() {
 
   const enough = ticks.length >= 3;
 
+  /** The next heading after the one being read, if there is one. */
+  const nextMajor = ticks.slice(active + 1).find((t) => t.major);
+
+  const jump = () => {
+    if (atEnd || !nextMajor) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    window.scrollTo({
+      top: nextMajor.top - window.innerHeight * (READ_AT - 0.06),
+      behavior: 'smooth',
+    });
+  };
+
+  const showTop = atEnd || !nextMajor;
+
   return (
-    <div className={styles.root} ref={rootRef} aria-hidden data-ready={enough || undefined}>
-      <nav className={styles.ruler} ref={rulerRef as React.RefObject<HTMLElement>}>
+    <div className={styles.root} ref={rootRef} data-ready={enough || undefined}>
+      <nav className={styles.ruler} ref={rulerRef as React.RefObject<HTMLElement>} aria-hidden>
         {ticks.map((t, i) => (
           <span
             key={i}
@@ -167,6 +196,14 @@ export function ReadingRuler() {
       </nav>
       {enough && <span className={styles.marker} />}
       {enough && <span className={styles.line} />}
+      {enough && (
+        <button className={styles.action} onClick={jump} aria-hidden={false}>
+          {showTop ? topLabel : nextLabel}
+          <span className={styles.actionArrow} aria-hidden>
+            {showTop ? '↑' : '↓'}
+          </span>
+        </button>
+      )}
     </div>
   );
 }

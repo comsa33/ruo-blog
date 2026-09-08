@@ -207,17 +207,15 @@ pre {
  * make room (0.55em dot + 0.9em gap). Everything else stays flush left, so the
  * dot reads as arriving rather than as a permanent bullet.
  */
-/* On wide screens the dot hangs in the left margin and text stays put, which
-   is what DD does. Only when that margin is gone does the text make room. */
+/* The element hosting the dot opens a slot for it and slides its text right.
+   Same behaviour at every width — the dot never hangs outside the column. */
 [data-dot] {
   padding-left: 0;
   transition: padding-left 480ms var(--ease);
 }
 
-@media (max-width: 900px) {
-  [data-dot][data-dot-active] {
-    padding-left: 1.35em;
-  }
+[data-dot][data-dot-active] {
+  padding-left: 1.35em;
 }
 
 @media (prefers-reduced-motion: reduce) {

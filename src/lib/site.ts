@@ -28,5 +28,7 @@ export const t = {
   minutes: { ko: '분', en: ' min' },
   empty: { ko: '아직 글이 없습니다.', en: 'Nothing here yet.' },
   copy: { ko: '복사', en: 'Copy' },
+  nextSection: { ko: '다음 섹션', en: 'Next section' },
+  backToTop: { ko: '맨 위로', en: 'Back to top' },
   copied: { ko: '복사됨', en: 'Copied' },
 } as const;

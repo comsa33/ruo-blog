@@ -140,25 +140,65 @@
   color: var(--ink);
 }
 
+/* ---------- action at the end of the line ---------- */
+
 /*
- * No gutter to hang a ruler in. The line stays — it is the part that helps
- * reading — and the dot moves inline, which is handled in globals.css.
+ * The reference ends its guide line with a filled orange call to action whose
+ * top edge sits on the line. Same treatment, different job: this one moves the
+ * reader to the next section, and to the top once there is no next one.
+ */
+.action {
+  position: fixed;
+  top: var(--line-y);
+  right: 0;
+  z-index: 23;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: normal;
+  white-space: nowrap;
+  transition:
+    top 420ms var(--ease),
+    opacity var(--dur-instant) ease-out,
+    transform var(--dur-instant) ease-out;
+}
+
+.action:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) {
+  .action:hover {
+    opacity: 0.88;
+  }
+}
+
+.actionArrow {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/*
+ * No gutter to hang a ruler in. The line and its action stay — that is the
+ * part that helps reading — and the dot keeps working inside the column.
  */
 @media (max-width: 1180px) {
   .ruler {
     display: none;
   }
   .marker {
-    left: 8px;
-  }
-}
-
-@media (max-width: 640px) {
-  .marker {
     display: none;
   }
   .line {
-    opacity: 0.18;
+    opacity: 0.55;
   }
 }
 

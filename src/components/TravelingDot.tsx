@@ -3,6 +3,9 @@
 import { useEffect, useRef } from 'react';
 import styles from './TravelingDot.module.css';
 
+/** Width of the slot a heading opens for the dot. Mirrors globals.css. */
+const PAD_EM = 1.35;
+
 /** Anchors the dot can land on, in the order it should consider them. */
 const ANCHOR_SELECTOR = 'h1[data-dot], h2[data-dot], h3[data-dot], figcaption[data-dot]';
 
@@ -29,12 +32,6 @@ export function TravelingDot() {
     anchors.forEach((el) => el.setAttribute('data-dot', ''));
 
     if (anchors.length < 2) return;
-
-    // Wide screens have a margin for the dot to hang in; narrow ones do not,
-    // so there the dot sits inside the column and the heading makes room.
-    // matchMedia rather than a CSS variable: this is a branch in the geometry,
-    // and reading it back out of the cascade only hides where it is decided.
-    const narrow = window.matchMedia('(max-width: 900px)');
 
     let frame = 0;
     let ready = false;
@@ -67,11 +64,15 @@ export function TravelingDot() {
       const declared = parseFloat(cs.getPropertyValue('--indicator-size'));
       const size = Number.isFinite(declared) ? declared : Math.round(fontSize * 0.55);
 
-      // Hanging in the margin, or sitting in the slot the heading opens.
-      const gap = narrow.matches ? -Math.round(size * 0.28) : Math.round(size + 12);
+      // The heading opens a slot of PAD_EM and the dot is centred in it, at
+      // every width. Hanging the dot outside the column on wide screens made
+      // the same element behave differently depending on the viewport, which
+      // is exactly the kind of seam a reader notices when resizing.
+      const slot = PAD_EM * fontSize;
+      const offset = (slot - size) / 2;
 
       dot.style.setProperty('--size', `${size}px`);
-      dot.style.transform = `translate(${Math.round(a.left - parent.left - gap)}px, ${Math.round(
+      dot.style.transform = `translate(${Math.round(a.left - parent.left + offset)}px, ${Math.round(
         a.top - parent.top + (lineHeight - size) / 2,
       )}px)`;
 
@@ -89,7 +90,6 @@ export function TravelingDot() {
     place();
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
-    narrow.addEventListener('change', schedule);
     // A figure resizing shifts everything below it, so watch the article too.
     const ro = new ResizeObserver(schedule);
     ro.observe(article);
@@ -98,7 +98,6 @@ export function TravelingDot() {
     return () => {
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
-      narrow.removeEventListener('change', schedule);
       ro.disconnect();
       if (frame) cancelAnimationFrame(frame);
       anchors.forEach((el) => {

@@ -25,8 +25,12 @@ type Props = {
 const W = 760;
 const PAD = 16;
 const HEAD_H = 30;
-const TOP = 46;
-const GAP = 54;
+/** Actor boxes end at HEAD_H + 4. The first label sits LABEL_DY above its
+ *  arrow, so the first arrow has to clear both, not just the box. */
+const TOP = 66;
+const GAP = 56;
+/** Baseline offset of a message label above its arrow. */
+const LABEL_DY = 9;
 const SELF_W = 46;
 /** Length of the arrowhead. The shaft stops exactly where the head begins. */
 const HEAD = 7;
@@ -137,7 +141,7 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
                 <text
                   className={styles.msgLabel}
                   x={g.self ? g.x1 + SELF_W + 8 : (g.x1 + g.x2) / 2}
-                  y={g.y - 7}
+                  y={g.y - LABEL_DY}
                   textAnchor={g.self ? 'start' : 'middle'}
                 >
                   {g.label}

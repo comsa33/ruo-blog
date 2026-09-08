@@ -104,13 +104,17 @@ per-post configuration for them.
 
 | Component | Behaviour |
 |---|---|
-| `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block) plus a horizontal guide line at 44vh. Hovering the ruler reveals section names and strengthens the line. Hidden below 1180px. |
+| `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block), a guide line drawn at the active tick, and an action at the line's right end. Ticks respond to pointer distance. Below 1180px the ruler is hidden, the line moves to a fixed 62% of the viewport, and both keep working. |
 | `<TravelingDot>` | One accent dot that moves to the heading or caption the reader is on. Anchors are discovered from `h1/h2/h3/figcaption`, so nothing needs marking up. |
 
 Dot size is emphasis: `--indicator-size` is declared per level in
 `post.module.css` (h1 18px, h2 14px, h3 10px, figcaption 7px). Change it there,
-never inline. The dot hangs in the left margin and does not move the text;
-below 900px it goes inline and the text makes room instead.
+never inline. The host opens a `1.35em` slot and slides its text right; the dot
+is centred in that slot. **This is identical at every width** — the dot never
+hangs outside the column, so resizing never changes what the reader sees.
+
+The line's action reads "next section" and jumps to the following `h2`, turning
+into "back to top" once the end is reached. Labels live in `src/lib/site.ts`.
 
 ### Prose furniture
 

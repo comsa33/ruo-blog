@@ -47,7 +47,7 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
 
   return (
     <main className={styles.main}>
-      <ReadingRuler />
+      <ReadingRuler nextLabel={t.nextSection[lang]} topLabel={t.backToTop[lang]} />
 
       <article className={styles.article}>
         <TravelingDot />
