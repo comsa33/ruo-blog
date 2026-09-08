@@ -150,8 +150,11 @@ Only when nothing in the kit fits. Then:
 1. `src/components/diagram/<Name>.tsx` + `<Name>.module.css`
 2. `'use client'` at the top if it has state
 3. Props must be plain serialisable data — a spec, not a render callback
-4. Register it in `src/mdx-components.tsx`
-5. Add a row to the table above
+4. **The root element must be `<figure>`.** The media bleed in
+   `post.module.css` targets `.prose figure`; anything else silently renders at
+   prose width while the rest of the kit runs to the frame
+5. Register it in `src/mdx-components.tsx`
+6. Add a row to the table above
 
 ---
 

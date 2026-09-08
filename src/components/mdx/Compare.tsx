@@ -27,7 +27,7 @@ export function Compare({
   afterText,
   note,
 }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
 
   // Bars fill when they enter the viewport, not on mount — otherwise the
@@ -52,7 +52,10 @@ export function Compare({
   const pct = (v: number) => `${Math.round((v / max) * 100)}%`;
 
   return (
-    <div className={`${styles.wrap} ${visible ? styles.visible : ''}`} ref={ref}>
+    // A figure like every other diagram, so the media bleed in post.module.css
+    // picks it up. As a div it silently stayed at prose width while the rest
+    // of the kit ran to the frame.
+    <figure className={`${styles.wrap} ${visible ? styles.visible : ''}`} ref={ref as React.RefObject<HTMLElement>}>
       <div className={styles.caption}>{caption}</div>
 
       <div className={styles.row}>
@@ -72,6 +75,6 @@ export function Compare({
       </div>
 
       {note && <p className={styles.delta} dangerouslySetInnerHTML={{ __html: note }} />}
-    </div>
+    </figure>
   );
 }

@@ -1,0 +1,151 @@
+---
+title: 'Taking on 13,000 lines of someone else’s code'
+description: 'It could not be a dependency and it could not be a fork. I picked the third option, and the price was a set of rules with no exceptions.'
+topic: 'Agent memory'
+date: 2026-09-05
+type: note
+tags: ['open source', 'technical debt', 'design']
+---
+
+The storage and retrieval engine behind the memory service was not written here. It came from an open-source library. But as described in [the first post](/en/examples-beat-instructions), that library's extraction prompt had to be changed — Korean conversations were being extracted into English.
+
+That is where the choice appears.
+
+## Three roads
+
+| Option | Our changes | Upstream updates | Diffability |
+|---|---|---|---|
+| Use as a dependency | impossible | automatic | not needed |
+| Fork | free | cherry-pick required | blurs quickly |
+| **Vendor** | free | selective | **maintainable** |
+
+As a dependency the prompt cannot be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
+
+I took the third. Pull the code into the repository wholesale, but keep it in a state where **a diff against the original is always possible.**
+
+<Metrics>
+  <Metric value="13,000 lines" label="code brought in" />
+  <Metric value="60" label="files" />
+  <Metric value="18" label="points we modified" />
+</Metrics>
+
+## The price is discipline
+
+Vendoring is not copying. Copying is easy; keeping it is not. What makes it keepable is following a few rules without exception.
+
+**No formatter touches it.** Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. That is a rule, not laziness.
+
+**Every changed line carries a comment saying why.** When comparing against upstream later, that comment is the only clue. An uncommented change reads to the next person as "I guess the original was like that."
+
+**The import is split into three commits.** This is the crux.
+
+<Sequence
+  caption="Bringing vendored code in"
+  actors={['Upstream', 'Commit 1', 'Commit 2', 'Commit 3']}
+  steps={[
+    { from: 'Upstream', to: 'Commit 1', label: 'not one line changed', note: 'The original, verbatim. This commit is the reference point. Mix anything else in and the reference point is gone.' },
+    { from: 'Commit 1', to: 'Commit 2', label: 'path rewrites only', note: 'Import paths and nothing else. 82 of them. Mechanical, so it needs no review and can be ignored in later diffs.' },
+    { from: 'Commit 2', to: 'Commit 3', label: 'our changes', note: 'Only now do the real modifications land. The diff of this commit is exactly "everything we differ from upstream by".' },
+    { from: 'Commit 3', to: 'Commit 3', label: 'and everything after', note: 'Later changes stack the same way. Mix 1 and 3 and you permanently lose the ability to tell original from ours.' },
+  ]}
+/>
+
+Follow this and you can always diff commit 1 against today to see everything you changed. Mix it and that ability is gone.
+
+## What you learn from having to read it
+
+You end up with no choice but to read someone else's code. Things invisible from the outside start showing up.
+
+### A class that is async in name only
+
+The library ships both a synchronous and an asynchronous class. Obviously you use the async one.
+
+Then you open it.
+
+<Transform
+  caption="Where the async class actually awaits"
+  inputLabel="The name"
+  input={[{ text: 'AsyncMemory' }]}
+  outputLabel="The implementation"
+  variants={[
+    {
+      key: 'expect',
+      label: 'What you expect',
+      output: [
+        { text: 'await http_client.post(...)      # non-blocking I/O' },
+        { text: 'await conn.execute(...)          # non-blocking I/O' },
+      ],
+      verdict: 'Genuine async means the I/O itself does not block.',
+    },
+    {
+      key: 'actual',
+      label: 'What is there',
+      output: [
+        { text: 'await asyncio.to_thread(llm.generate, ...)' },
+        { text: 'await asyncio.to_thread(embedding.embed, ...)' },
+        { text: 'await asyncio.to_thread(vector_store.search, ...)' },
+      ],
+      verdict: 'Every one of them hands a synchronous function to a thread. Nowhere in the store or embedding adapters is there an async function or an async HTTP client.',
+      bad: true,
+    },
+  ]}
+/>
+
+Which is **the same thing** we already do by handing sync code to a thread pool. The only difference is whether you hand over a whole request or one call at a time.
+
+Switching would gain essentially nothing and cost something specific: **maintaining our changes twice.** Eighteen modifications live on the sync path; all of them would have to be duplicated and kept in step.
+
+And the real bottleneck was elsewhere.
+
+<Compare
+  caption="Concurrent request throughput"
+  beforeLabel="before"
+  afterLabel="wider pool"
+  before={20}
+  after={46}
+  beforeText="20 req/s"
+  afterText="46 req/s"
+  note="All that changed was doubling the connection pool. <strong>2.3×</strong>. Going async would still have jammed at the pool — measuring the configuration was faster than changing the architecture."
+/>
+
+### A feature with no switch
+
+This one still makes me slightly uneasy.
+
+Version 2 of the library contains an undocumented **entity linking** feature. It extracts entities from memory sentences, embeds them into a separate table, and boosts memories sharing an entity at search time. A reasonable feature.
+
+<Callout label="There is no switch" accent>
+Nothing turns it on or off. It activates **automatically** if a morphological analysis library happens to be installed. It is dormant here only because that library is absent.
+
+The moment somebody adds it as a dependency for a completely unrelated reason, an entity table appears and every ingest starts paying for entity embeddings — with no code change at all.
+</Callout>
+
+It is also close to useless for Korean. The model is hardcoded for English, and the check for whether a token is a name is **whether its first character is uppercase.** Korean has no uppercase, so nothing ever qualifies. Turned on, it costs and does nothing.
+
+It could be fixed — swap the model, rewrite the capitalisation test and the English stopword filter. But that collides head-on with "keep our diff minimal". So it was not fixed; it was **written down.** The best available move is to tell the next person where the mine is.
+
+### Config keys that are silently ignored
+
+Pass a wrong key name to the config object and nothing is raised. It is ignored.
+
+- The database connection string is not `dsn` but another name. Get it wrong and it does not fail to connect — it **falls back to a default, quietly**
+- Point the history store at the wrong path and it drops to a local file database instead of PostgreSQL. No log
+- The graph config from v1 no longer exists in v2, but passing it raises nothing. It is ignored
+
+All of it the same character described in [the previous post](/en/failures-that-dont-throw). Nothing throws.
+
+## Debt taken on deliberately
+
+The delete path is not atomic. Removing the vector row, writing the history entry and cleaning up run in sequence on separate connections with no transaction. If the first commits and the rest fail, you get a memory that is gone with no record of its deletion.
+
+The vendored code was not restructured to be atomic. That would explode the diff, which undermines the premise of the whole strategy. Instead there is **a compensating layer outside it** — backfilling missing history, sweeping rows left orphaned.
+
+It is not clean. But it is deliberate debt: replace the engine and the compensating layer disappears with it. Carrying it until then beats tearing up the vendored code and losing the ability to diff.
+
+## What is left
+
+**Vendoring is not copying code, it is the discipline of staying diffable.** Keeping formatters off and splitting the commits is not fastidiousness; it is the minimum condition for the strategy to work at all. Break it once and what you have is a fork.
+
+**Being forced to read someone else's code teaches you things.** That the async class is async in name only, that config keys are silently ignored, that a feature hides behind an implicit switch — all of it came from reading. As a dependency all three would have stayed unknown until they became incidents.
+
+**What you cannot fix, document.** Entity linking is useless for Korean and we cannot fix it. What we could do is write down the condition that activates it and what happens when it does. If you cannot clear the mine, at least mark it.

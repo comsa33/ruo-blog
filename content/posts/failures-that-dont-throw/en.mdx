@@ -1,0 +1,116 @@
+---
+title: 'The failures that never throw'
+description: 'The first conversation each morning came back with no preferences. There were no error logs. I found six defects of the same kind, and they had one thing in common.'
+topic: 'Agent memory'
+date: 2026-08-29
+type: note
+tags: ['incidents', 'PostgreSQL', 'design']
+---
+
+The report came in like this.
+
+> When I talk to the agent first thing in the morning it knows none of my preferences. From the second message on it's fine.
+
+No error logs. No 5xx. The response was a 200 with an empty array where the memories should have been. Calling it repeatedly during the day never reproduced anything.
+
+Once I found the cause, I realised there were five more defects of exactly the same kind.
+
+## Idle overnight, then the first request
+
+The vector store's connection pool had **no check before handing a connection out.** Leave it idle for a few hours and the server drops the connection; the pool doesn't know, and hands over a dead one. The first request of the day takes it and fails.
+
+<Sequence
+  caption="How the first request of the morning fails"
+  actors={['Agent', 'Memory service', 'Connection pool', 'Database']}
+  steps={[
+    { from: 'Agent', to: 'Memory service', label: 'give me preferences', note: 'First turn of the morning. Nothing has touched this path since last night.' },
+    { from: 'Memory service', to: 'Connection pool', label: 'borrow', note: 'The pool hands over a connection it opened last night. It does not check whether it is alive.' },
+    { from: 'Connection pool', to: 'Database', label: 'query', async: true, note: 'The server closed this connection hours ago. Only the pool was unaware.' },
+    { from: 'Database', to: 'Memory service', label: 'connection is lost', note: 'An exception is raised here. The problem is what happens next.' },
+    { from: 'Memory service', to: 'Agent', label: 'empty list · 200', note: 'The rule was that failing to load memories must never block the conversation. So the failure is swallowed and an empty result returned. The user gets a 200, and the agent answers without knowing who it is talking to.' },
+  ]}
+/>
+
+The design was right. You cannot drop a conversation because memory lookup failed. The problem was that **the swallowed failure was reported nowhere.** An empty array and "a user with no memories" were indistinguishable.
+
+The fix was two lines: a pre-borrow check on the pool, and a signal for the swallowed failure that is distinct from an empty result.
+
+## Rows without the field never match the condition
+
+To exclude the current conversation from search results I added a `$not` condition. And then **memories the model had written itself stopped appearing in search entirely.**
+
+<Transform
+  caption="Same condition, different rows"
+  inputLabel="Condition — exclude anything from this conversation"
+  input={[{ text: 'NOT (run_id = :current)' }]}
+  outputLabel="Per-row verdict"
+  variants={[
+    {
+      key: 'has',
+      label: 'Auto-extracted memory (run_id present)',
+      output: [{ attr: 'run_id = "other"', text: 'NOT (false) → TRUE · included' }],
+      verdict: 'Behaves as intended.',
+    },
+    {
+      key: 'null',
+      label: 'Model-written memory (no run_id)',
+      output: [{ attr: 'run_id = NULL', text: 'NOT (NULL) → NULL · dropped' }],
+      verdict: "SQL's three-valued logic. NULL is neither true nor false, so it cannot pass the condition. Excluded without being an exclusion target.",
+      bad: true,
+    },
+  ]}
+/>
+
+`NOT NULL` is not `TRUE`, it is `NULL`. Obvious to anyone who remembers, and a few days for anyone who does not. The dangerous part is that **the condition raises nothing.** The query succeeds and the result set quietly shrinks.
+
+Wrapped it in `COALESCE(NOT (…), TRUE)`, and made the field non-optional in the first place by requiring a category on automatically ingested rows too.
+
+## Conversations after midnight belong to yesterday
+
+Memories carry dates. Storing "half day off next Tuesday" requires a reference date.
+
+The vendored code computed that reference in UTC.
+
+<Callout label="00:00 – 08:59 Korean time" accent>
+In this window the conversation is still **the previous day** in UTC. So "tomorrow" resolves to today and "yesterday" to the day before, and that resolution is **stored permanently.** A user says "the meeting tomorrow" at half past midnight, and the memory records a meeting today.
+</Callout>
+
+Someone suggested setting the pod timezone to `Asia/Seoul`. We did not. **Having to verify that setting on every deploy is itself the failure mode.** Miss it once, anywhere, and the same bug comes back silently.
+
+The reference date is pinned to UTC+9 in code instead. Korea has had no daylight saving since 1988, so the value is always correct. A constant that does not depend on the environment beats a setting that does.
+
+## The other three
+
+Three more of the same character. All caught before deployment.
+
+<Metrics>
+  <Metric value="full scan" label="scope queries never used an index. The filter key was bound as a parameter, so it could not match an expression index" />
+  <Metric value="TEXT" label="ledger timestamps were strings. The moment offsets mix, lexical order stops matching chronological order" />
+  <Metric value="no ORDER BY" label="LIMIT without a sort. The same query returns a different page every time" />
+</Metrics>
+
+The third is the nastiest. Paging through, some items appear twice and others never appear at all — and **querying once looks completely fine.**
+
+## What they share
+
+Laid side by side, all six collapse into one thing.
+
+**None of them throw.** The dead connection became a swallowed failure, `NOT NULL` quietly shrank the result set, the UTC reference produced a plausible date, the full scan was merely slow, the string timestamp only got the order wrong, and `LIMIT` without a sort answered differently each time.
+
+All of them return 200. All of them return a plausible value.
+
+Bugs that raise are easy. A stack trace names the line, an alert fires, it reproduces. **Bugs that quietly return the wrong value get found by users instead** — in the shape of "it's only weird in the mornings".
+
+## What catching them early was worth
+
+Four of the six were caught while still unreleased, by reading the code rather than by an incident.
+
+After release each would have needed a data migration. String timestamps mean converting a ledger that already exists, and the UTC reference date has no way back at all. **No way back** is the point: a memory that stored "tomorrow" a day early is not recovered by fixing the timezone later.
+
+## What is left
+
+**To avoid silent failure, "none" and "could not fetch" must be different values.** Express both as an empty array and an outage disguises itself as a normal response. That is a type problem, not a logging problem.
+
+**Correctness that depends on configuration is not correctness.** Code that is only right when the pod timezone is set carries the burden of verifying that setting forever. If it can be pinned as a constant, pin it.
+
+**Three-valued logic only bites when forgotten.** That `NOT NULL` is `NULL` is known to everyone who knows SQL, which is exactly why nobody raises it in review. Knowing something and recalling it at the right moment are different skills.
