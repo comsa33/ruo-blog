@@ -212,14 +212,21 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       ready = true;
     };
 
+    // Scroll events arrive faster than frames, so they are coalesced onto one.
+    // The observers below are already batched by the browser, and waiting a
+    // frame would only delay the flight, so they place at once.
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(place);
+    };
+    const placeNow = () => {
+      if (frame) cancelAnimationFrame(frame);
+      place();
     };
 
     place();
     window.addEventListener('resize', schedule);
     // Anything resizing inside the parent shifts what is below it.
-    const ro = new ResizeObserver(schedule);
+    const ro = new ResizeObserver(placeNow);
     ro.observe(parent);
     document.fonts?.ready.then(schedule);
 
@@ -228,7 +235,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       window.addEventListener('scroll', schedule, { passive: true });
     } else {
       // The list tells us where to be by moving the attribute around.
-      mo = new MutationObserver(schedule);
+      mo = new MutationObserver(placeNow);
       mo.observe(parent, {
         subtree: true,
         childList: true,
