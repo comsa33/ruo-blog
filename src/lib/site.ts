@@ -3,6 +3,7 @@ export const site = {
   author: 'Ruo Lee',
   authorKo: '이루오',
   portfolio: 'https://po24lio.com',
+  worldtrip: 'https://backpacking.po24lio.com',
   github: 'https://github.com/comsa33',
   email: 'comsa333@gmail.com',
   title: { ko: '이루오 — 기록', en: 'Ruo Lee — Notes' },

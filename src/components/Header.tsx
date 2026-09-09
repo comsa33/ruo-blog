@@ -35,6 +35,9 @@ export function Header({ lang }: { lang: Lang }) {
           <a href={site.portfolio} className={styles.navItem}>
             {lang === 'ko' ? '포트폴리오' : 'Portfolio'}
           </a>
+          <a href={site.worldtrip} className={styles.navItem}>
+            {lang === 'ko' ? '세계일주' : 'World Trip'}
+          </a>
           <Link href={otherHref} className={styles.navItem}>
             {other.toUpperCase()}
           </Link>
