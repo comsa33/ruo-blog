@@ -111,4 +111,17 @@ export function getAvailableLangs(slug: string): Lang[] {
   return LANGS.filter((lang) => fs.existsSync(path.join(CONTENT_DIR, slug, `${lang}.mdx`)));
 }
 
+/**
+ * The post body as authored, with the frontmatter stripped. Served at
+ * `/{lang}/{slug}.md` so an LLM can read a post without parsing the page
+ * chrome. Component blocks are left in place on purpose — the `note` and
+ * `verdict` strings inside them carry measurements that the prose does not
+ * repeat, so removing them would hand over an incomplete post.
+ */
+export function getPostBody(slug: string, lang: Lang): string | null {
+  const file = path.join(CONTENT_DIR, slug, `${lang}.mdx`);
+  if (!fs.existsSync(file)) return null;
+  return matter(fs.readFileSync(file, 'utf8')).content.trim();
+}
+
 export { formatDate } from './date';

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getPost, getAllParams, formatDate } from '@/lib/posts';
+import { getPost, getAllParams, getAvailableLangs, formatDate, type PostMeta } from '@/lib/posts';
 import { ReadingRuler } from '@/components/ReadingRuler';
 import { TravelingDot } from '@/components/TravelingDot';
 import { Views } from '@/components/Views';
@@ -22,13 +22,58 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: post.title,
     description: post.description,
-    alternates: { canonical: `/${lang}/${slug}` },
+    alternates: {
+      canonical: `/${lang}/${slug}`,
+      // Without these the two translations look like duplicates of each other.
+      languages: Object.fromEntries(
+        getAvailableLangs(slug).map((l) => [l, `${site.url}/${l}/${slug}`]),
+      ),
+    },
     openGraph: {
       type: 'article',
       title: post.title,
       description: post.description,
       publishedTime: post.date,
       url: `${site.url}/${lang}/${slug}`,
+    },
+  };
+}
+
+/**
+ * Structured data. Unlike llms.txt this is consumed today — by Search, by AI
+ * Overviews, and by anything that reads schema.org — and it is what lets a
+ * model state who wrote a post and when without inferring it from layout.
+ */
+function articleSchema(post: PostMeta, lang: Lang) {
+  const url = `${site.url}/${lang}/${post.slug}`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.description,
+    datePublished: post.date,
+    dateModified: post.date,
+    inLanguage: lang === 'ko' ? 'ko-KR' : 'en',
+    about: post.topic,
+    keywords: post.tags.join(', '),
+    timeRequired: `PT${post.readingTime}M`,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    url,
+    author: {
+      '@type': 'Person',
+      name: lang === 'ko' ? site.authorKo : site.author,
+      url: site.portfolio,
+      sameAs: [site.portfolio, site.github],
+    },
+    publisher: {
+      '@type': 'Person',
+      name: lang === 'ko' ? site.authorKo : site.author,
+      url: site.portfolio,
+    },
+    isPartOf: {
+      '@type': 'Blog',
+      name: site.title[lang],
+      url: `${site.url}/${lang}`,
     },
   };
 }
@@ -44,6 +89,10 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
 
   return (
     <main className={styles.main}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema(post, lang)) }}
+      />
       <ReadingRuler nextLabel={t.nextSection[lang]} topLabel={t.backToTop[lang]} />
 
       <article className={styles.article}>
