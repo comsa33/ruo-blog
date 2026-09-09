@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   alternates: { types: { 'application/rss+xml': `${site.url}/rss.xml` } },
   openGraph: { type: 'website', siteName: site.title.ko, url: site.url },
   robots: { index: true, follow: true },
+  /**
+   * Search console ownership. Google is verified by the static file in
+   * `public/`, so only Naver needs a tag — its downloadable HTML file was
+   * never saved, and the tag is the same check by another route.
+   */
+  verification: {
+    other: { 'naver-site-verification': '94cacbe4676230a74e45d04984e7e8137bae023f' },
+  },
 };
 
 /**
