@@ -1,0 +1,105 @@
+---
+title: 'I blamed iOS twice, and was wrong twice'
+description: 'A new user failed five times in a row, three minutes after signing up. I changed the container and the same person failed again.'
+topic: 'Browser recording'
+date: 2026-09-09
+tags: ['MediaRecorder', 'Race condition', 'Misdiagnosis']
+draft: false
+---
+
+The speaking-practice app I run records a user's answer, sends it to a model and returns an assessment. If recording does not work, there is no product.
+
+On 8 September a new user failed analysis five times in a row, starting three minutes after signing up. The server log held only one fact: the model API returned `400 INVALID_ARGUMENT`.
+
+## The first misdiagnosis
+
+There were two failures in the log and both were iOS. 18.7 and 18.7.1.
+
+A plausible hypothesis formed immediately. `MediaRecorder` on iOS Safari is notorious for its container support. We were recording webm; perhaps something in iOS 18 produced a file the model could not read.
+
+So I detected iOS 18 and switched it to record mp4. I added iPad desktop-mode detection along the way, because Safari on iPad pretends to be a Mac and plain iOS detection does not work.
+
+I deployed. **The same user failed again with the same symptom.**
+
+Changing the container and getting the same result means the container was not the cause. The hypothesis was not so much wrong as unsupported: the evidence had never pointed at it. I had picked a cause from a single shared trait, iOS.
+
+## I stopped guessing and added instrumentation
+
+It took being wrong twice to admit the order was backwards. Nobody had ever looked at what a failing request actually uploaded.
+
+I added diagnostics that record the **leading bytes** of the uploaded file, its container header and its effective bitrate whenever a failure occurs.
+
+The next day the answer arrived. All five failures on 9 September uploaded files beginning with the same bytes.
+
+```
+000001346d6f6f66…
+             m o o f
+```
+
+`moof` is the **fragment** box of a fragmented MP4. It belongs in the middle of a file, not at the start. The `ftyp` and `moov` boxes that should precede it were absent. The **initialisation segment**, which carries codec and track configuration, was missing entirely.
+
+No decoder can read such a file. The model server returning 400 was correct.
+
+## The real cause
+
+`MediaRecorder` emits the initialisation segment exactly once, as the first chunk when it starts. Its absence means **the first chunk was thrown away**.
+
+The start function looked like this: clear the buffer, request microphone permission, create the recorder and start it. The problem is that `getUserMedia` in the middle is `await`ed. It takes hundreds of milliseconds, and the function stays open across them.
+
+<Sequence
+  caption="What happens when the start button is tapped twice"
+  actors={['User', 'Start function', 'Recorder A', 'Chunk buffer']}
+  steps={[
+    { from: 'User', to: 'Start function', label: 'first tap', note: 'Clears the buffer and waits on getUserMedia. Hundreds of milliseconds.' },
+    { from: 'Start function', to: 'Recorder A', label: 'start recorder A', note: 'A puts the initialisation segment into the buffer as its first chunk. Everything is fine up to here.' },
+    { from: 'User', to: 'Start function', label: 'second tap', note: 'Nothing seems to happen, so the user taps again. The first call has not returned, and the second call proceeds anyway.' },
+    { from: 'Start function', to: 'Chunk buffer', label: 'clear the buffer', note: 'The second call clears the buffer as the rule says. This is where the initialisation segment A wrote disappears.' },
+    { from: 'Recorder A', to: 'Chunk buffer', label: 'a fragment every 100ms', async: true, note: 'Nobody stopped A. It stays alive and keeps pushing fragments into the new buffer. The header is already gone.' },
+    { from: 'Chunk buffer', to: 'User', label: 'a file starting with moof', note: "B's initialisation segment only arrives after its own getUserMedia resolves, by which point A's fragments already sit in front of it." },
+  ]}
+/>
+
+I checked the chunk order before and after the fix.
+
+```
+before  [moof-A, moof-A, INIT-B, …]
+after   [INIT-B, moof-B]
+```
+
+Three things changed. A re-entry lock across the `await`; if a previous recorder is alive, detach its data handler first and then stop it; and a per-session local array that the handler closes over instead of a shared ref.
+
+The middle one hides a trap. If you detach `onstop` as well while cleaning up the previous recorder, the promise of an in-flight stop **never resolves**. Detach the data handler only, and leave `onstop` alone.
+
+## Then I looked at the numbers again
+
+Having found the cause, I went back over the failure counts I had been quoting.
+
+| Date | Success | Failure | Rate |
+|---|---|---|---|
+| 9/05 | 265 | 0 | 0% |
+| 9/06 | 233 | 0 | 0% |
+| 9/07 | 220 | 7 | 3.1% |
+| 9/08 | 273 | 5 | 1.8% |
+| 9/09 | 108 | 5 | 4.4% |
+
+The seven on 7 September looks like the worst day. **Six of them were local tests I ran myself.** One real user failed.
+
+Recounted properly:
+
+<Metrics>
+  <Metric value="11" label="real user failures out of 17 total. The other six were test requests I generated" />
+  <Metric value="2" label="actual people behind those 11. The same person retried several times" />
+  <Metric value="iOS 18.7" label="every one of the 11 was an iPhone on 18.7. This is why the first misdiagnosis felt so plausible" />
+</Metrics>
+
+My own test traffic had leaked into a production failure metric. Read in a hurry it shows 3.1%; what actually happened to users was 0.45%. **If you cannot subtract your own noise from your own metrics, you will rank the wrong thing first.**
+
+## What is still open
+
+**I cannot yet say it is fixed.** The deploy went out at 12:30 today and in the three hours and fifteen minutes since there have been 39 successes and no failures. The window immediately before it had five failures in seventy. That looks good, but failures were running at about five a day. **Three clean hours happens by chance easily enough.** A full day is the minimum.
+
+**Whether iOS 18 is innocent is still unknown.** It is a fact that all 11 real failures were iPhones on 18.7. The defect itself is a platform-independent race, but it is plausible that slower microphone-permission handling widens the `await` window and therefore the race. That is **a guess, and I did not measure it.** Timing `getUserMedia` per device would settle it. I have not.
+
+**No user ever reported any of this.** Every incident found in this app so far surfaced through logs and alerts; not one arrived as a user report. Someone who fails five times within three minutes of signing up does not file a report. They delete the app. **An absence of reports may not mean an absence of problems, but an absence of people left to report them.**
+
+**Instrumentation first would have saved two days.** Both misdiagnoses came from a plausible shared trait. iOS really was shared, and it really was not the cause. Printing the first sixteen bytes of the uploaded file took one line, and that one line ended two days of guessing.
