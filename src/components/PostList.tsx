@@ -150,6 +150,10 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
   }, [shown]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // A Korean syllable is still composing after its first jamo. Chrome then
+    // delivers an arrow twice — once to end the composition (keyCode 229), once
+    // for real — and the cursor jumped two rows. Only the real one counts.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSel((s) => Math.min(s + 1, Math.max(0, shown.length - 1)));
