@@ -1,0 +1,127 @@
+---
+title: 'I measured the abuse, then decided to do nothing'
+description: 'Multi-account farming looked likely. Measuring it put the damage at $0.27. Instead of a countermeasure, I removed a defence that already existed.'
+topic: 'Abuse response'
+date: 2026-09-07
+tags: ['Abuse', 'Control group', 'Decisions']
+draft: false
+---
+
+The app I run gives free credits on signup. Credits buy an AI analysis, and every analysis costs real money. When users surged, the expected question followed.
+
+**Is someone creating multiple accounts just to harvest the free credits?**
+
+There was reason to suspect it. Clusters of similarly named accounts were visible, and Google accounts can be created without limit. Candidate countermeasures came quickly too: device attestation, store integrity checks, IP limits, identity verification.
+
+None of them were applied. Instead one existing defence was deleted. This post is how that decision was reached.
+
+## Measure the size first
+
+Before choosing a countermeasure there is a prior question. How much am I losing right now?
+
+I wrote read-only query scripts and pulled weekly signups against usage distribution, duplicates after email normalisation, name clusters, referral status and per-account AI cost.
+
+<Metrics>
+  <Metric value="4" label="accounts judged to be farmers" />
+  <Metric value="$0.27" label="cumulative real cost of the credits they took illegitimately — about 75 credits" />
+  <Metric value="$4.73" label="total AI spend that same week. The damage is 5.7% of it" />
+</Metrics>
+
+The numbers ended the discussion. **Adding identity verification costs far more than $0.27.** The drop in signup conversion exceeds that figure before you even convert it to money.
+
+## There was a control group
+
+Still, one question remains: what if today's four become four hundred? That is about trend, not size.
+
+Here I got lucky. This app had a **natural control group.**
+
+There are several sign-in providers, and Kakao requires phone verification to register. Kakao accounts are hard to mass-produce. Google has no such limit. So **if farming were actually happening, Google usage patterns should differ from Kakao's.** A farmer's account burns its free credits and is abandoned, so the share of short-lived accounts should be higher on Google.
+
+Three measures, compared.
+
+| Measure | Google | Kakao |
+|---|---|---|
+| Share using 11–20 times | 34.3% | 40.9% |
+| Used one day then left | 71.9% | 73.7% |
+| Never used | 28.9% | 28.7% |
+
+**None of them separated.** The gap in the first row is z=1.24, not significant, and it points the wrong way: farming would push Google higher, and Kakao is higher.
+
+Mean usage per account does differ in the raw numbers — Kakao 14.6, Google 10.7, Apple 16.1. The distribution test found nothing. **This is the textbook case for not arguing from a difference in means.**
+
+The conclusion settled as: farming exists but **has not grown to a measurable size**, and if it starts growing the control group will show it first.
+
+## Why farming loses money
+
+I also worked out why it does not grow. The referral reward carries a qualifying condition: **the invited account must complete ten analyses** before any reward is paid.
+
+That condition inverts the arithmetic of farming.
+
+<Playground
+  caption="Farming as you add accounts"
+  param={{ label: 'sub-accounts created', initial: 3, unit: '' }}
+  rows={Array.from({ length: 10 }, (_, i) => {
+    const n = i + 1;
+    return {
+      value: n,
+      results: [
+        { label: 'referral credits earned', value: `${n * 10}` },
+        { label: 'analyses that must be burned', value: `${n * 15}` },
+        { label: 'net', value: `${n * 10 - n * 15}`, highlight: true },
+      ],
+    };
+  })}
+/>
+
+Each sub-account grants fifteen free credits, but qualifying for the reward means spending ten analyses from it. The more accounts you add, the faster consumption outruns acquisition. In the observed data a three-account farmer burned 45 analyses to obtain 30 credits.
+
+**There is no reason to close a hole with technology when economics has already closed it.**
+
+## And I removed a defence
+
+During the investigation I found that a defence already switched on was causing the problem instead.
+
+To block self-referral, device fingerprints were being compared. That fingerprint was a hash of six values: user agent, language, core count, screen size and timezone. With no canvas or WebGL, its entropy is low.
+
+**Two unrelated people on the same phone model and OS produce the same hash.**
+
+Inviting a friend who uses the same phone — in a dormitory, at school, entirely legitimate — was judged self-referral and the reward was withheld.
+
+<Compare
+  caption="What the check actually did"
+  beforeLabel="blocked — self-referral"
+  afterLabel="blocked — genuine invites"
+  before={0}
+  after={100}
+  beforeText="already blocked by the qualifying condition"
+  afterText="same-model friend invites withheld"
+  note="The cost of a miss was near zero and the cost of a false positive landed directly on users. There is no reason to keep a check like that."
+/>
+
+**The false-positive cost exceeded the false-negative cost.** Self-referral was already blocked economically by the qualifying condition, so the check added almost nothing. Its false positives, meanwhile, were taking real rewards away from real users.
+
+The check was removed. The remaining defences are the qualifying condition, an IP signal and a monthly cap. Fingerprint collection stayed, for measurement only.
+
+## The most expensive false positive
+
+The most uncomfortable finding was not a number but a single case.
+
+One account surfaced in the name-cluster report as a suspected abuser. Its usage was an overwhelming 253 analyses. It looked like textbook multi-account farming.
+
+**It was the single best paying customer.**
+
+The heaviest legitimate user and the heaviest abuser **look identical in the logs.** Usage alone will never separate them. Had an automatic blocking rule been in place, I would have cut off my best customer.
+
+## When to look again
+
+A decision to "not do this now" becomes plain neglect unless you also decide what would reverse it.
+
+One threshold is written down. **If AI cost attributable to free users passes $100 a month**, it gets revisited. It currently runs around $8.
+
+## What is still open
+
+**The control group was an accident.** That one provider requires phone verification is not something I designed; it simply is the case, and it handed me a comparison for free. There is no guarantee the next decision of this kind will have one. **Deliberately designing a control group in** is something I have never thought about.
+
+**Putting fingerprints back into judgement is a long way off.** It would need canvas or WebGL for entropy, and recent Safari injects noise for anti-fingerprinting so its values change every time and must be excluded from matching. That means **a different rule per browser.** That complexity is not worth $0.27.
+
+**The $100 line is poorly justified.** It is a number picked as a tolerable ceiling on loss, not one derived from any analysis. I cannot explain it beyond "about ten times current cost". I wrote elsewhere that thresholds should be measured rather than chosen, and here I chose one.
