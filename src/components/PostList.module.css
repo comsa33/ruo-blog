@@ -1,3 +1,8 @@
+/* Anchor for the travelling dot, which is absolutely positioned inside. */
+.root {
+  position: relative;
+}
+
 /* ---------- Search ---------- */
 
 /*
@@ -163,8 +168,8 @@
   }
 }
 
-/* The keyboard cursor. Same grammar as TravelingDot: the title opens a
-   1.35em slot and slides right to receive the dot. */
+/* The keyboard cursor row. The dot itself is the travelling dot, and the
+   slot the title opens for it is the global [data-dot-active] rule. */
 .row[data-active] {
   background: var(--bg-hover);
 }
@@ -184,35 +189,13 @@
 }
 
 .rowTitle {
-  position: relative;
-  padding-left: 0;
+  --indicator-size: 7px;
   font-size: 16px;
   font-weight: 500;
   line-height: 1.45;
   transition:
     color var(--dur-instant) ease-out,
     padding-left 480ms var(--ease);
-}
-
-.row[data-active] .rowTitle {
-  padding-left: 1.35em;
-}
-
-.dot {
-  position: absolute;
-  left: 0.4em;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  margin-top: -3.5px;
-  border-radius: 50%;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity var(--dur-instant) ease-out;
-}
-
-.row[data-active] .dot {
-  opacity: 1;
 }
 
 .arrow {

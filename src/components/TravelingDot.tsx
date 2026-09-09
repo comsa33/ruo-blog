@@ -12,89 +12,189 @@ const PAD_EM = 1.35;
  */
 const HOME_THRESHOLD = 8;
 
+/** A little over the transform transition, so a return home can settle. */
+const FLIGHT_MS = 600;
+
+/** A move shorter than this is a nudge, not a journey — no deformation. */
+const JOURNEY_PX = 6;
+
+type Mode = 'scroll' | 'cursor';
+
+type Spot = { x: number; y: number; size: number };
+
 /**
- * Marks every heading and figure caption in the article as a dot anchor, then
- * moves a single dot to whichever one the reader is currently on. The host
- * element opens a slot for it by sliding its text right.
+ * One accent dot that marks where the reader is.
  *
- * Size is derived from the host's own type size, so a title gets a large dot
- * and a caption a small one without any per-post configuration.
+ * In `scroll` mode (a post) it discovers every heading and figure caption in
+ * its parent and moves to whichever one the reader is on. In `cursor` mode
+ * (the index) it is told: whatever element in its parent carries
+ * `data-dot-active` is where it goes. Either way the host opens a slot for it
+ * by sliding its text right, and the dot's size comes from the host's
+ * `--indicator-size`, so emphasis is a stylesheet decision.
  *
- * It starts on the brand mark in the header — the one accent in the chrome —
- * and leaves the ring behind when the reader scrolls, so the same dot that
- * names the site is the one walking down the page.
+ * Its home is the brand mark in the header — the one accent in the chrome.
+ * While it is home it is not drawn at all; the header's own dot stands in.
+ * When it leaves, it appears on that mark and flies, and the mark becomes the
+ * ring it left behind. So the same dot that names the site is the one walking
+ * down the page, and there is never more than one of it.
  */
-export function TravelingDot() {
+export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
   const ref = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const dot = ref.current;
-    const article = dot?.parentElement;
-    if (!dot || !article) return;
-
-    // Discovery: anything that titles a piece of the page is an anchor.
-    const anchors = Array.from(
-      article.querySelectorAll<HTMLElement>('h1, h2, h3, figcaption'),
-    ).filter((el) => (el.textContent ?? '').trim().length > 0);
-    anchors.forEach((el) => el.setAttribute('data-dot', ''));
-
-    if (anchors.length < 2) return;
+    const parent = dot?.parentElement;
+    if (!dot || !parent) return;
+    const ball = dot.firstElementChild as HTMLElement | null;
 
     // The brand mark in the header. Marked from the Header component so this
     // file does not have to know its class name.
     const home = document.querySelector<HTMLElement>('[data-dot-home]');
 
-    const ball = dot.firstElementChild as HTMLElement | null;
+    // Discovery: anything that titles a piece of the page is an anchor.
+    const anchors =
+      mode === 'scroll'
+        ? Array.from(parent.querySelectorAll<HTMLElement>('h1, h2, h3, figcaption')).filter(
+            (el) => (el.textContent ?? '').trim().length > 0,
+          )
+        : [];
+    if (mode === 'scroll') {
+      anchors.forEach((el) => el.setAttribute('data-dot', ''));
+      if (anchors.length < 2) return;
+    }
 
     let frame = 0;
     let ready = false;
+    let atHome = true;
+    let returning = 0;
     let currentHost: HTMLElement | null = null;
     let lastX = NaN;
     let lastY = NaN;
 
-    /**
-     * Move the dot, and if this is a real journey rather than a nudge, let the
-     * ball deform along the line of travel: it gathers itself, stretches in
-     * flight, lands with a squash and settles. The outer element only ever
-     * translates; the inner one only ever deforms, so the two never fight.
-     */
-    const moveTo = (x: number, y: number) => {
+    const setTransform = (x: number, y: number) => {
       dot.style.transform = `translate(${x}px, ${y}px)`;
-      const dx = x - lastX;
-      const dy = y - lastY;
       lastX = x;
       lastY = y;
-      if (!ready || !ball || !(Math.hypot(dx, dy) >= 6)) return;
+    };
+
+    /**
+     * The ball is a soft body. On a real journey it gathers itself, stretches
+     * along the line of travel, lands with a squash and settles. The outer
+     * element only ever translates; the inner one only ever deforms, so the
+     * two never fight.
+     */
+    const moveTo = (x: number, y: number) => {
+      const dx = x - lastX;
+      const dy = y - lastY;
+      setTransform(x, y);
+      if (!ball || !(Math.hypot(dx, dy) >= JOURNEY_PX)) return;
       ball.style.setProperty('--angle', `${Math.atan2(dy, dx)}rad`);
       ball.removeAttribute('data-squish');
       void ball.offsetWidth; // restart the animation
       ball.setAttribute('data-squish', '');
     };
 
-    const markReady = () => {
-      if (ready) return;
-      // First placement lands without animating; every later one glides.
-      ready = true;
-      requestAnimationFrame(() => dot.setAttribute('data-ready', 'true'));
+    /** Land without animating — a first placement, or the start of a flight. */
+    const jumpTo = (x: number, y: number) => {
+      dot.removeAttribute('data-ready');
+      setTransform(x, y);
+      void dot.offsetWidth;
+      dot.setAttribute('data-ready', 'true');
+    };
+
+    const homeSpot = (): Spot | null => {
+      if (!home) return null;
+      const h = home.getBoundingClientRect();
+      const p = parent.getBoundingClientRect();
+      return { x: h.left - p.left, y: h.top - p.top, size: h.width };
+    };
+
+    /** Where the dot sits on a host: centred in the slot, on the first line. */
+    const spotFor = (host: HTMLElement): Spot => {
+      const a = host.getBoundingClientRect();
+      const p = parent.getBoundingClientRect();
+      const cs = getComputedStyle(host);
+      const fontSize = parseFloat(cs.fontSize);
+      const lineHeight = parseFloat(cs.lineHeight) || fontSize * 1.4;
+      const declared = parseFloat(cs.getPropertyValue('--indicator-size'));
+      const size = Number.isFinite(declared) ? declared : Math.round(fontSize * 0.55);
+      // The host opens a slot of PAD_EM and the dot is centred in it, at every
+      // width. Hanging it outside the column on wide screens made the same
+      // element behave differently depending on the viewport.
+      const offset = (PAD_EM * fontSize - size) / 2;
+      return {
+        x: Math.round(a.left - p.left + offset),
+        y: Math.round(a.top - p.top + (lineHeight - size) / 2),
+        size,
+      };
+    };
+
+    const settleHome = () => {
+      returning = 0;
+      atHome = true;
+      dot.setAttribute('data-home', '');
+      home?.removeAttribute('data-dot-state');
+    };
+
+    /** Fly back to the brand mark, then hand over to it. */
+    const goHome = () => {
+      if (atHome || returning) return;
+      currentHost?.removeAttribute('data-dot-active');
+      currentHost = null;
+      const s = homeSpot();
+      if (!s) {
+        settleHome();
+        return;
+      }
+      dot.style.setProperty('--size', `${s.size}px`);
+      moveTo(s.x, s.y);
+      returning = window.setTimeout(settleHome, FLIGHT_MS);
+    };
+
+    /** Go to a host — leaving the brand mark first if that is where we are. */
+    const goTo = (s: Spot) => {
+      if (returning) {
+        window.clearTimeout(returning);
+        returning = 0;
+      }
+      if (atHome) {
+        atHome = false;
+        dot.removeAttribute('data-home');
+        home?.setAttribute('data-dot-state', 'away');
+        const h = homeSpot();
+        if (!ready) {
+          // First placement lands where it is; every later one glides.
+          dot.style.setProperty('--size', `${s.size}px`);
+          jumpTo(s.x, s.y);
+          return;
+        }
+        if (h) {
+          dot.style.setProperty('--size', `${h.size}px`);
+          jumpTo(h.x, h.y);
+        }
+      }
+      dot.style.setProperty('--size', `${s.size}px`);
+      moveTo(s.x, s.y);
     };
 
     const place = () => {
       frame = 0;
-      const parent = article.getBoundingClientRect();
 
-      // At the very top the dot sits on the brand mark, exactly over it, and
-      // no heading holds a slot open.
-      if (home && window.scrollY < HOME_THRESHOLD) {
-        currentHost?.removeAttribute('data-dot-active');
-        currentHost = null;
-        home.setAttribute('data-dot-state', 'home');
-        const h = home.getBoundingClientRect();
-        dot.style.setProperty('--size', `${h.width}px`);
-        moveTo(h.left - parent.left, h.top - parent.top);
-        markReady();
+      if (mode === 'cursor') {
+        const host = parent.querySelector<HTMLElement>('[data-dot-active]');
+        if (host) goTo(spotFor(host));
+        else goHome();
+        ready = true;
         return;
       }
-      home?.setAttribute('data-dot-state', 'away');
+
+      // At the very top the dot sits on the brand mark and no heading holds a
+      // slot open.
+      if (window.scrollY < HOME_THRESHOLD) {
+        goHome();
+        ready = true;
+        return;
+      }
 
       // The anchor the reader is on is the last one above the reading line.
       const lineY = window.innerHeight * 0.44;
@@ -103,36 +203,13 @@ export function TravelingDot() {
         if (el.getBoundingClientRect().top <= lineY) host = el;
         else break;
       }
-
       if (host !== currentHost) {
         currentHost?.removeAttribute('data-dot-active');
         host.setAttribute('data-dot-active', '');
         currentHost = host;
       }
-
-      const a = host.getBoundingClientRect();
-      const cs = getComputedStyle(host);
-      const fontSize = parseFloat(cs.fontSize);
-      const lineHeight = parseFloat(cs.lineHeight) || fontSize * 1.4;
-      // Size comes from the host's own --indicator-size, set per heading level
-      // in CSS, so emphasis is a stylesheet decision rather than a magic ratio.
-      const declared = parseFloat(cs.getPropertyValue('--indicator-size'));
-      const size = Number.isFinite(declared) ? declared : Math.round(fontSize * 0.55);
-
-      // The heading opens a slot of PAD_EM and the dot is centred in it, at
-      // every width. Hanging the dot outside the column on wide screens made
-      // the same element behave differently depending on the viewport, which
-      // is exactly the kind of seam a reader notices when resizing.
-      const slot = PAD_EM * fontSize;
-      const offset = (slot - size) / 2;
-
-      dot.style.setProperty('--size', `${size}px`);
-      moveTo(
-        Math.round(a.left - parent.left + offset),
-        Math.round(a.top - parent.top + (lineHeight - size) / 2),
-      );
-
-      markReady();
+      goTo(spotFor(host));
+      ready = true;
     };
 
     const schedule = () => {
@@ -140,28 +217,43 @@ export function TravelingDot() {
     };
 
     place();
-    window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
-    // A figure resizing shifts everything below it, so watch the article too.
+    // Anything resizing inside the parent shifts what is below it.
     const ro = new ResizeObserver(schedule);
-    ro.observe(article);
+    ro.observe(parent);
     document.fonts?.ready.then(schedule);
+
+    let mo: MutationObserver | null = null;
+    if (mode === 'scroll') {
+      window.addEventListener('scroll', schedule, { passive: true });
+    } else {
+      // The list tells us where to be by moving the attribute around.
+      mo = new MutationObserver(schedule);
+      mo.observe(parent, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['data-dot-active'],
+      });
+    }
 
     return () => {
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       ro.disconnect();
+      mo?.disconnect();
       if (frame) cancelAnimationFrame(frame);
+      if (returning) window.clearTimeout(returning);
       home?.removeAttribute('data-dot-state');
       anchors.forEach((el) => {
         el.removeAttribute('data-dot');
         el.removeAttribute('data-dot-active');
       });
     };
-  }, []);
+  }, [mode]);
 
   return (
-    <span ref={ref} className={styles.dot} aria-hidden="true">
+    <span ref={ref} className={styles.dot} data-home="" aria-hidden="true">
       <span className={styles.ball} />
     </span>
   );

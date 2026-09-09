@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDate } from '@/lib/date';
+import { TravelingDot } from './TravelingDot';
 import type { PostMeta } from '@/lib/posts';
 import { t, type Lang } from '@/lib/site';
 import styles from './PostList.module.css';
@@ -68,8 +69,8 @@ function Row({
               <Marked text={post.topic} q={q} />
             </span>
           )}
-          <h3 className={styles.rowTitle}>
-            <span className={styles.dot} aria-hidden />
+          {/* The keyboard cursor is the travelling dot; the title opens its slot. */}
+          <h3 className={styles.rowTitle} data-dot="" data-dot-active={active || undefined}>
             <Marked text={post.title} q={q} />
             <span className={styles.arrow} aria-hidden>
               →
@@ -167,7 +168,8 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
   let n = 0;
 
   return (
-    <>
+    <div className={styles.root}>
+      <TravelingDot mode="cursor" />
       <div className={`${styles.search} rise`} style={{ '--i': 2 } as React.CSSProperties}>
         <svg
           className={styles.glyph}
@@ -240,6 +242,6 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
       ) : (
         <p className={styles.empty}>{t.noMatch[lang]}</p>
       )}
-    </>
+    </div>
   );
 }

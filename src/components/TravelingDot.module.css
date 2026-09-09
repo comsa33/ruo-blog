@@ -26,9 +26,9 @@
   will-change: transform;
 }
 
-/* Nothing shows until the first placement — otherwise the dot flashes at the
-   article's top-left corner for a frame. */
-.dot:not([data-ready='true']) {
+/* At home the brand mark in the header stands in for it, so it is not drawn.
+   This also means nothing flashes at the parent's corner before placement. */
+.dot[data-home] {
   opacity: 0;
 }
 
