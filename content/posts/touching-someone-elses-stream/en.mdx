@@ -1,0 +1,130 @@
+---
+title: 'We decided to touch someone else’s stream'
+description: 'The same ten lines changed five times in one day. The version that lost nothing was the one deleted after seventeen minutes.'
+topic: 'Dynamic execution engine'
+date: 2025-12-12
+tags: ['SSE', 'Streaming', 'Code generation']
+draft: false
+---
+
+There is one promise we made when integrating external model providers: whichever provider is used, the shape of the response a client receives has to be the same.
+
+Provider SSE payloads differ from each other. Field names differ, nesting depth differs, termination signals differ. Keeping the promise means opening each event as the stream passes and rewriting it into our shape.
+
+**From that moment we are not a relay. We are a parser.** This post is about what that costs.
+
+## Ten lines, twenty-four hours, five versions
+
+Between 10:17 on 4 August 2025 and 10:01 the following morning, the code in one place changed five times.
+
+| Time | What happened |
+|---|---|
+| 8/4 15:20 | Drop line-based reading; reassemble events from bytes with a buffer |
+| 8/4 15:37 | Remove the buffer. Pass chunks straight through |
+| 8/4 17:21 | Restore the buffer and introduce an SSE event regex |
+| 8/5 10:01 | Remove the regex. Split on `"\n\n"`, forward only frames containing `data:` |
+
+Two mechanisms were added and then taken back out. The buffer lasted seventeen minutes; the regex lasted until the next morning.
+
+Every commit message says "improved". None says what broke or how. So I lifted each of the four versions out and fed them the same stream.
+
+<Transform
+  caption="One SSE stream, four implementations"
+  inputLabel="Input stream"
+  input={[{ text: 'data: a\\n\\ndata: b\\n\\ndata: c\\n\\n' }]}
+  outputLabel="What actually came out"
+  variants={[
+    {
+      key: 'v2',
+      label: '15:20 · buffered reassembly',
+      output: [
+        { attr: 'first', text: "'data: a\\n\\nda'" },
+        { attr: 'second', text: "'ta: b\\n\\nda'" },
+        { attr: 'third', text: "'ta: c\\n\\n'" },
+      ],
+      verdict: 'The separator "\\n\\n" is two characters; the cut was taken four characters in. Every event eats the first two characters of the next one. Everything after the first is corrupted.',
+      bad: true,
+    },
+    {
+      key: 'v3',
+      label: '15:37 · raw passthrough',
+      output: [{ attr: 'as received', text: 'identical to the input' }],
+      verdict: 'It loses nothing. It also changes nothing. Deleted seventeen minutes later.',
+    },
+    {
+      key: 'v4',
+      label: '17:21 · regex',
+      output: [
+        { attr: 'data frames', text: 'forwarded' },
+        { attr: ': keep-alive', text: 'never forwarded' },
+        { attr: 'left in buffer', text: "'\\n'" },
+      ],
+      verdict: 'The regex only accepts lines beginning with id, event, data or retry. A comment frame starting with a colon is valid SSE but never matches, so it disappears silently. Heartbeats are exactly that.',
+      bad: true,
+    },
+    {
+      key: 'v5',
+      label: '8/5 10:01 · split, data required',
+      output: [
+        { attr: 'data: b', text: 'forwarded' },
+        { attr: 'event: status / id: 7', text: 'dropped' },
+      ],
+      verdict: 'Any frame without the string data: is discarded. Frames carrying only a status notice or an identifier never reach the client.',
+      bad: true,
+    },
+  ]}
+/>
+
+Of the four, exactly one loses nothing: **raw passthrough.** And it was deleted after seventeen minutes.
+
+## Why we did not go back to passthrough
+
+That was the question I most wanted answered. A lossless implementation was right there. Why return to parsing?
+
+The answer is in today's code. The final implementation pulls each event apart, remaps it into the gateway's common shape, filters out the termination sentinel, and blanks a field for certain event types.
+
+So **raw passthrough loses nothing precisely because it changes nothing.** But the reason this system exists was to make differently-shaped providers look the same. Forwarding untouched and normalising the shape cannot both hold.
+
+<Callout label="What the seventeen-minute version showed" accent>
+That version was not a wrong choice. It was **a different product.** Keeping it would have made us a transparent proxy and pushed the job of absorbing provider differences onto every client. What cannot be undone is not the code — it is that promise.
+</Callout>
+
+## Why ten lines are not ten lines
+
+To understand why this code was touched five times in a day you have to see where it lives. It is not code the server runs. It is **code the server writes.**
+
+<Structure
+  hint="Hover a node to keep only what it connects to"
+  nodes={[
+    { id: 'tpl', label: 'Generation template', sub: 'a string', col: 0, row: 0, accent: true, note: 'The relay logic sits here inside a string. That is why the braces are doubled — this file is not executed code, it is a mould that stamps out code.' },
+    { id: 'gen', label: 'Generated api.py', sub: 'one per provider', col: 1, row: 0, note: 'One file is produced for each registered external provider. The relay logic is copied into every one of them.' },
+    { id: 'sub', label: 'Sub-app', sub: 'mounted', col: 2, row: 0, note: 'The router extracted from the generated file is attached here. Only now is it callable.' },
+    { id: 'regen', label: 'Regenerate all', sub: 'maintenance API', col: 1, row: 1, note: 'Fixing the template does not touch files already produced; they keep the old code. So a dedicated endpoint exists purely to stamp every deployed file again.' },
+  ]}
+  edges={[
+    { from: 'tpl', to: 'gen', label: 'stamps' },
+    { from: 'gen', to: 'sub' },
+    { from: 'tpl', to: 'regen', dashed: true },
+    { from: 'regen', to: 'gen', label: 'overwrites', dashed: true },
+  ]}
+/>
+
+Two things follow.
+
+First, **a bug in the template has already been copied into every deployed provider.** Fixing the template fixes nothing by itself; every generated file has to be stamped again. That is why a maintenance endpoint exists for exactly that job.
+
+Second, **this code is hard to step through.** It lives inside a string, so the editor does not check its syntax, there is no completion, and there is one extra layer of escaping. Whether `"\n\n"` counts as two characters or four is precisely the confusion that produced the 15:20 bug, and it came from that extra layer.
+
+## Where it stands now
+
+Four months later the logic moved out of the template string and became a shared function. Generated files now simply call it. The era of editing code inside a string literal is over.
+
+One loss was repaired too. Comment frames beginning with a colon are forwarded verbatim again. Heartbeats are back.
+
+## What is still open
+
+**Frames carrying only `event:` and `id:` are still dropped.** The final implementation handles frames that have `data`, and otherwise only checks whether the frame is a comment. A frame that is neither reaches nobody. The loss introduced on the morning of 5 August is still there. Nobody has noticed because the providers currently attached do not send such frames.
+
+**The commit messages recorded no symptoms.** All five say "improved". Nothing about what broke, nothing about why it was reverted. To write this post I had to lift the four versions out and run them again. What I needed four months later was not "improved" — it was **"this cuts off two characters."**
+
+**Changing it five times in a day means there was no way to check between deploys.** Twenty lines that feed one stream in and compare what comes out would have caught the 15:20 bug before it was committed. I wrote that check for the first time while writing this post. The order should have been the other way round.
