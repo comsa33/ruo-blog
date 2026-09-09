@@ -101,9 +101,11 @@
 }
 
 /*
- * A month marker sticks in the sheet gutter — the margin the reading ruler
- * occupies on a post page — and rides along with its group. Where there is
- * no gutter it becomes a line above the group instead.
+ * A month marker sticks in the sheet's inner margin and rides along with its
+ * group. Two states only, like the reading ruler: in the margin once the
+ * sheet has reached its full width and the margin is whole (from 1360px —
+ * the gutter is 38px at 1181px and only reaches 120px at 1362px), and a line
+ * above the group before that. Chrome never straddles the sheet's edge.
  */
 .group {
   display: grid;
@@ -122,16 +124,17 @@
   white-space: nowrap;
 }
 
-@media (min-width: 1181px) {
+@media (min-width: 1360px) {
   .group {
     grid-template-columns: 0 minmax(0, 1fr);
   }
+  /* Right edge 32px off the column — the ruler's own offset on a post page. */
   .rail {
     position: sticky;
     top: calc(var(--header-h) + 20px);
     align-self: start;
-    width: 84px;
-    margin-left: -116px;
+    width: 72px;
+    margin-left: -104px;
     padding: 18px 0 0;
     text-align: right;
   }
