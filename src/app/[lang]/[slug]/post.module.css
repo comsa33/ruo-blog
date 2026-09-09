@@ -247,6 +247,17 @@
   transform: translateX(-50%);
 }
 
+/* Code is read as part of the sentence that introduces it, not as a figure.
+   rehype-pretty-code wraps every <pre> in a bare <figure>, which otherwise
+   inherits the bleed above — measured, the longest line in any post is 49
+   characters (~400px), so a 960px box left two thirds of it empty while
+   still overhanging the prose by 140px on each side. */
+.prose figure[data-rehype-pretty-code-figure] {
+  width: auto;
+  margin-left: 0;
+  transform: none;
+}
+
 /* Tables read as data, so they get a little extra room too — but not the full
    frame, which would detach them from the sentence that introduces them. */
 .prose table {

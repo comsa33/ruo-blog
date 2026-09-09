@@ -1,0 +1,181 @@
+---
+title: 'The deploy succeeded and the call returned 404'
+description: 'The console said deployed, the registration API returned 200, and the route really was registered. No request could reach it.'
+topic: 'Dynamic execution engine'
+date: 2026-09-01
+tags: ['FastAPI', 'ASGI', 'Incident']
+draft: false
+---
+
+A customer reported that calls to a newly created agent always returned 404.
+
+```
+POST /agent/api/v2/a1/main
+-> {"detail":"Not Found"}
+```
+
+Everything we could check looked fine. The console showed the agent as deployed, the API access toggle was on, and the registration API had returned 200. Other agents on the same site worked.
+
+```
+POST /agent/api/a10/test   -> 200
+```
+
+## It was not the gateway
+
+The first suspect for a 404 is always the edge. A bad routing rule, an ingress that cannot resolve the path.
+
+Two things ruled that out. First, the request appeared in the pod log. Response time 24ms. It had passed the edge and reached the application. Second, the response body was `{"detail":"Not Found"}` — not our response envelope, but **FastAPI's default 404 format**.
+
+So the app received the request, and the app said it could not find the route. The route was registered.
+
+## Mounts match by prefix
+
+For every agent a user registers, the engine builds a separate FastAPI sub-application and attaches it to the root app under the agent's alias.
+
+```python
+app.mount(f"/{agent_alias}", subapp)
+```
+
+The site in question had two agents with these aliases.
+
+| Agent  | Alias    | Mount path |
+| ------ | -------- | ---------- |
+| First  | `api`    | `/api`     |
+| Second | `api/v2` | `/api/v2`  |
+
+Starlette's router **walks the registered routes in order and uses the first match**. And `Mount` is prefix matching, not exact matching.
+
+<Sequence
+  caption="How the request gets trapped in the wrong sub-application"
+  actors={['Client', 'Root app', '/api subapp', '/api/v2 subapp']}
+  steps={[
+    {
+      from: 'Client',
+      to: 'Root app',
+      label: 'POST /api/v2/a1/main',
+      note: 'The request is meant for the second agent.',
+    },
+    {
+      from: 'Root app',
+      to: '/api subapp',
+      label: 'first match — prefix /api',
+      note: 'The /api mount comes first in the route list. The prefix matches, so the walk ends here. The /api/v2 mount is never examined.',
+    },
+    {
+      from: '/api subapp',
+      to: '/api subapp',
+      label: 'look up the remainder /v2/a1/main',
+      note: 'No such route exists inside this sub-application. This one belongs to the first agent.',
+    },
+    {
+      from: '/api subapp',
+      to: 'Client',
+      label: '404 · FastAPI default format',
+      note: "The second agent's route is registered correctly. There is simply no way to reach it.",
+    },
+  ]}
+/>
+
+The deploy succeeded. The route exists. It is shadowed by an earlier mount and never called.
+
+## Reverse the order and the result reverses
+
+Fifteen lines reproduced it in the project virtualenv.
+
+```python
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+sa = FastAPI()
+@sa.post("/a10/test")
+def _a(): return {"ok": 1}
+
+sb = FastAPI()
+@sb.post("/a1/main")
+def _b(): return {"ok": 2}
+
+app = FastAPI()
+app.mount("/api", sa)      # shorter path first
+app.mount("/api/v2", sb)
+
+c = TestClient(app)
+c.post("/api/a10/test")    # 200
+c.post("/api/v2/a1/main")  # 404
+```
+
+<Transform
+  caption="Same two agents, only the mount order differs"
+  inputLabel="Request"
+  input={[{ text: 'POST /api/v2/a1/main' }]}
+  outputLabel="Response"
+  variants={[
+    {
+      key: 'short-first',
+      label: 'shorter first — /api → /api/v2',
+      output: [
+        { attr: '/api/a10/test', text: '200' },
+        { attr: '/api/v2/a1/main', text: '404 · intercepted by the /api subapp' },
+      ],
+      verdict: 'Identical to what production showed.',
+      bad: true,
+    },
+    {
+      key: 'long-first',
+      label: 'longer first — /api/v2 → /api',
+      output: [
+        { attr: '/api/a10/test', text: '200' },
+        { attr: '/api/v2/a1/main', text: '200' },
+      ],
+      verdict: 'Same code, same aliases, same requests, and everything passes.',
+    },
+  ]}
+/>
+
+This is where the real nature of the bug shows. **The correct answer depends on mount order.** And mount order comes from the order in which a restarting pod restores deployment state. That order is not guaranteed.
+
+<Callout label="A bug that disappears on restart" accent>
+  Restarting the pod can make the symptom go away, and the next restart can bring it back. This is
+  the kind of defect where **failing to reproduce is not the same as having fixed it.** In practice
+  it gets reported as "it does that sometimes" and stays that way for a long time.
+</Callout>
+
+## Two options, one discarded
+
+**Option 1. Validate the alias.** Reject aliases containing a slash at registration time.
+
+**Option 2. Sort mounts by descending path length.** Let longer paths match first.
+
+Option 2 looked more fundamental — safe for any alias that might arrive. But it has a cost. Agents are added and removed at runtime, continuously. Each change means re-sorting the root app's route list, and a request arriving between unmount and remount races with it. It means permanently carrying **code that shuffles the routing table while serving traffic**.
+
+So we measured what option 2 would actually prevent.
+
+```python
+app.mount("/api",   ...)   # first
+app.mount("/apiv2", ...)   # second
+-> /api/x    200
+-> /apiv2/y  200
+```
+
+Starlette's `Mount` **matches on segment boundaries**. `/api` does not intercept `/apiv2/y`. Prefix here means path prefix, not string prefix.
+
+That narrows the collision condition to one thing. One alias has to be a **path prefix** of another, and that is only possible if an alias contains a slash. Restrict aliases to a single segment and the collision cannot occur at all. In that state, option 2's sorting becomes **code that will never change anything**.
+
+We also confirmed that no alias in production contained a slash. The offending `api/v2` had been created for a test.
+
+We did not adopt the sorting. Instead of stacking one more layer of defence, we removed the thing that needed defending.
+
+## Why it had to be caught at registration
+
+The existing validation was this. The alias field was declared as a plain string with no format check. The only thing verified at registration was whether it matched the agent's own previous alias. An alias with a slash passed straight through.
+
+That is what made this defect expensive. **The bad input was recorded as a success.** The registration API returned 200, the console showed deployed, the route was actually created. Every signal a user can see said fine. The signal that something was wrong arrived hours later as a 404 on a different agent, somewhere that looked unrelated to the cause.
+
+The only moment you can reject a value is when it arrives. Miss that moment and from then on you are tracing causes backwards from consequences.
+
+## What is still open
+
+**The console still reports the deploy as successful.** New collisions cannot happen now that registration rejects them. But as long as deployed is defined as "the file was written and the route was registered", nobody verifies "that route can be reached". A post-deploy check that calls the agent once would have surfaced this within seconds of registration. There isn't one.
+
+**Order-dependent defects are hard to test for.** The reproduction above is fifteen lines, but it was written after the cause was known. Catching it beforehand would require imagining a test that registers two agents in one specific order, and that act of imagination is already the answer.
+
+**Knowing a framework's matching rules is not the same as recalling them in the moment.** That `Mount` matches by prefix and the router takes the first match is in the documentation. The distance is between that fact and "allowing a slash in an alias makes some agent permanently unreachable". What closed that distance was not the documentation. It was fifteen lines of reproduction code.
