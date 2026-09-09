@@ -1,0 +1,166 @@
+---
+title: 'We could not use a database, so we chose the filesystem'
+description: 'To import user-authored Python at runtime, the code has to be a real file on disk. Five months of bugs came out of that single constraint.'
+topic: 'Dynamic execution engine'
+date: 2025-10-31
+tags: ['Python', 'import', 'Architecture']
+draft: false
+---
+
+What this engine does fits in one sentence. It takes a Python file a user wrote and turns it into a live API without restarting the server.
+
+That left no choice about where state lives. You cannot put code in a database. `importlib` does not read columns. A module needs a real file on disk.
+
+The documentation records it in one line.
+
+> Core logic does not use a relational database; persistence is delegated to the filesystem — to allow for dynamic module loading.
+
+It reads like an architecture decision. It was really an invoice. Most of the bugs filed over the following five months descend from it.
+
+## A module exists in four places at once
+
+To understand the failures you have to see how many places a file passes through before it becomes an API.
+
+<Structure
+  hint="Hover a node to keep only what it connects to"
+  nodes={[
+    { id: 'image', label: 'Container image', sub: '/app', col: 0, row: 0, note: 'The shared utility package lives here. Fixed at build time.' },
+    { id: 'pvc', label: 'Shared volume', sub: 'PVC', col: 1, row: 0, note: 'Where user code actually lands. Several pods see the same volume. And this volume covers the same path in the image.' },
+    { id: 'path', label: 'sys.path', sub: 'search path', col: 2, row: 0, note: 'A file can exist and still fail to import if its directory is not in this list. Managed per process.' },
+    { id: 'mods', label: 'sys.modules', sub: 'loaded objects', col: 3, row: 0, accent: true, note: 'Executed module objects stay here. Process-global; delete a key and the next import builds a new object. Most of the incidents in this post happened here.' },
+    { id: 'app', label: 'Sub-app routes', sub: 'FastAPI', col: 3, row: 1, note: 'The router pulled out of the module and mounted. What the user actually calls.' },
+  ]}
+  edges={[
+    { from: 'image', to: 'pvc', label: 'covers', dashed: true },
+    { from: 'pvc', to: 'path' },
+    { from: 'path', to: 'mods' },
+    { from: 'mods', to: 'app' },
+  ]}
+/>
+
+In an ordinary web server none of these change at runtime. Here all four do. And none of the four knows the state of the others.
+
+## Works while running, breaks on restart
+
+A user put two files in the same directory and imported one from the other.
+
+```python
+# routes/{agent}/sandboxes/bbb.py
+from aaa import example_var
+```
+
+It worked while the server was up. After a restart:
+
+```
+ModuleNotFoundError: No module named 'aaa'
+```
+
+The cause was `sys.path`. Only the watched parent directory was added to the search path — **not the directory the module actually sits in.** While running, an earlier registration step happened to leave the path correct as a side effect. Restarting removed the coincidence.
+
+The fix is three lines. Add the module's own directory to the search path too.
+
+<Callout label="The nature of this bug">
+**"It works while running" is the worst possible symptom.** The server is always up at the moment a developer checks. You deploy, you test, you report success, and that night the pod restarts and it breaks. When the moment of verification and the moment of destruction are different, no amount of diligence catches it.
+</Callout>
+
+## Registration order splits a singleton in two
+
+This one was nastier. Router modules A and B both imported service module C, and C was a singleton.
+
+The registration code re-read modules unconditionally.
+
+```python
+if normalized_module_name in sys.modules:
+    del sys.modules[normalized_module_name]   # if present, drop it and rebuild
+```
+
+The intent was to make file edits take effect. But deleting a name from `sys.modules` means the next import builds a **new object**, while anything already holding the old one keeps holding it.
+
+<Sequence
+  caption="Registering in the order A → C → B"
+  actors={['Registrar', 'sys.modules', 'Module A', 'Module B']}
+  steps={[
+    { from: 'Registrar', to: 'Module A', label: 'register A', note: 'A imports C. C loads for the first time and one singleton instance is created. A references it.' },
+    { from: 'Registrar', to: 'sys.modules', label: 'register C — del sys.modules["C"]', note: "Now it is C's own turn. Per the rule, the existing entry is dropped and re-read. A second instance is born here." },
+    { from: 'Registrar', to: 'Module B', label: 'register B', note: 'B imports C and receives the newly created second instance.' },
+    { from: 'Module A', to: 'Module B', label: 'not the same singleton', async: true, note: 'A and B now hold different Cs. Caches, connections and accumulated state all fork in two. Nothing raises.' },
+  ]}
+/>
+
+A singleton is a promise that there is only one, and that promise was broken by **registration order**. In the order A → B → C nothing would have happened.
+
+The fix inverts the rule: reuse an already-loaded module, and re-read only when the file genuinely changed.
+
+## A container loses its own modules
+
+The third came from outside Python.
+
+```
+ModuleNotFoundError: No module named 'utils.commons.debugger'
+```
+
+This package is not user code; it ships in the image. Locally it was obviously there. On Kubernetes it vanished.
+
+**The shared volume was mounted over the same path in the image.** A mount hides whatever was at that path. A file plainly present in the image ceases to exist the moment the volume attaches.
+
+The fix was on the deployment side. An init container copies the shared package from the image onto the volume, and the editing service mounts it read-only. Not one line of application code changed.
+
+The error messages for all three are nearly identical: `ModuleNotFoundError`. The causes were the search path, the module cache and a volume mount. **The same exception is raised from different layers.**
+
+## Three patches, then a change of direction
+
+Duplicate registration was held together with local fixes for a while. Simplify the duplicate check; let duplicates through if a router is present; block the regression that caused with a same-day hotfix. All within a few days.
+
+Four months later the approach changed. The single loop that read a file, executed it and pulled out a router was split in two.
+
+**Phase 1.** Compile every file, create an empty module object, register it in `sys.modules`. **Do not execute.**
+
+**Phase 2.** Execute the registered modules and extract routers.
+
+Two things follow. First, by the time phase 2 starts every module name is already in `sys.modules`, so `import` resolves regardless of processing order. Second, execution begins only after all compilation succeeded, so **a syntax error in the third file no longer leaves the first two half-deployed.**
+
+## What phase 2 actually guarantees
+
+Rather than stop there, I measured it. To check whether the ordering problem was really gone, I reproduced the same structure in twenty lines: compile and register as empty modules, then vary only the execution order.
+
+<Transform
+  caption="Both registered in phase 1, only the phase 2 execution order varied"
+  inputLabel="bbb depends on aaa"
+  input={[{ text: 'aaa.py — example_var = 1' }, { text: 'bbb.py — from aaa import example_var' }]}
+  outputLabel="Result"
+  variants={[
+    {
+      key: 'from-dep-first',
+      label: 'from-import · dependent executed first',
+      output: [
+        { attr: 'exec bbb → exec aaa', text: "ImportError: cannot import name 'example_var' from 'aaa'" },
+      ],
+      verdict: 'aaa is in sys.modules but its body has not run, so it is empty. The name resolved; the attribute is missing.',
+      bad: true,
+    },
+    {
+      key: 'from-dep-last',
+      label: 'from-import · dependency executed first',
+      output: [{ attr: 'exec aaa → exec bbb', text: 'fine' }],
+      verdict: 'Same code, only the execution order differs.',
+    },
+    {
+      key: 'import-form',
+      label: 'import statement + attribute access inside a function',
+      output: [{ attr: 'exec bbb → exec aaa', text: 'fine · returns 1 when called' }],
+      verdict: 'Attribute access is deferred to call time, by which point both modules have executed. Order stops mattering.',
+    },
+  ]}
+/>
+
+So what two-phase loading solved is **name resolution**, not **execution order**. A top-level `from X import name` still depends on order. If the user writes `import X` and defers attribute access into a function, order disappears.
+
+That depends on how the user writes their code, and it is not something we can enforce.
+
+## What is still open
+
+**`sys.modules` is process-global mutable state**, and we use it as a deployment state store. Delete a key and someone else's reference goes stale; keep it and edits do not take effect. There is no safe point between those two, and what we picked is a compromise: delete only when the file genuinely changed. If that judgment is wrong, one of the two symptoms returns.
+
+**The same exception is raised from four layers.** Nothing in the log distinguishes a `ModuleNotFoundError` caused by the search path, the module cache, a volume mount or registration order. Attaching a distinct diagnostic per layer is still undone.
+
+**In hindsight the real decision was not "no database".** It was to import user code inside our own process. Running it in a separate process or container would have eliminated every bug in this post, at the cost of call latency and resource isolation work. We have not recomputed that trade since. For now we simply believe this approach stays inside what we can handle.
