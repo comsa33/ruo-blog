@@ -1,0 +1,191 @@
+---
+title: 'Everything but the payment test'
+description: 'Google Play asked for the optimizer, so I turned it on. I checked login, recording and scoring. I never pressed buy. I found out ten days later, from the revenue.'
+topic: 'In-app purchase'
+date: 2026-09-11
+tags: ['R8', 'Capacitor', 'Release verification']
+draft: false
+---
+
+Most of the revenue on the OPIc speaking-practice app I run comes from store in-app purchases. Of 54 payments across the app's whole life, 40 of them — 74% — are the app. There is a payment path on the web too, but the app is the one that matters.
+
+Between September 1st and 10th, Android payments were **zero**. I found out on the night of the tenth day.
+
+## They asked, so I turned it on
+
+Play Console wanted DEX code optimization. It was filed as a requirement rather than a suggestion, with a deadline attached.
+
+On August 31st I enabled `minifyEnabled`. On September 1st I enabled `shrinkResources`, adjusted the optimizer settings, and shipped a lightweight release — three builds in a row. Production review passed on September 2nd.
+
+Every build succeeded. There were no warnings.
+
+## Everything but the payment test
+
+After it was approved I opened the app and checked it. Login, recording, scoring, history. All fine.
+
+I did not press buy. I could have pushed it to the internal test track first, and I did not do that either. It went straight to production.
+
+The reason is not mysterious. Most of this app's code is written and changed by an AI agent. Nothing had gone wrong before. So I assumed nothing would go wrong this time. **I assumed that about a release which changed the build configuration.**
+
+The agent was not wrong. `minifyEnabled` and `shrinkResources` are the options Google asked for, turned on the way the documentation says to turn them on. What was wrong came after. Whoever writes the code, pressing the revenue path once before shipping is the operator's job, and I did not do it.
+
+<Callout label="Why this release was different" accent>
+An ordinary release here changes only web code. The app loads its web layer remotely, so a web deploy reaches the app immediately and the native shell never moves. Rebuilding the app is rare.
+
+This time I **changed the native build configuration.** It was a different kind of release, and I verified it to the standard of the ordinary kind.
+</Callout>
+
+## Ten days, and nothing said a word
+
+Two things stacked.
+
+First, **the failure ended on the client.** A payment failure here finishes before the server is involved. If the store never initializes, products never load, and with no products the purchase request is never sent. Nothing arrives at the server at all. There was nothing for the Vercel logs or Sentry to hold.
+
+Second, **the error handler filed real errors as user cancellations.** Three plugin error codes were bundled together as the cancel family and quietly swallowed.
+
+```
+6777001  ERR_SETUP      store init failed     → treated as cancelled
+6777002  ERR_LOAD       product load failed   → treated as cancelled
+6777006  ERR_CANCELLED  an actual cancellation
+```
+
+The real message, `Init failed - Class not found`, sat behind that handler for ten days. On screen it was one `alert()` that appeared and went away.
+
+## Web payments really were growing
+
+An SEO effort started two months earlier had begun to land. Desktop traffic was up, and web payments with it: three in August, nine in September. Three times as many.
+
+So the dashboard did not look wrong. It read like the payment channel had shifted to the web.
+
+**The web growth was real and the app collapse was real.** They overlapped in the same window, so the total looked healthy. The reason one rose and the reason the other vanished had nothing to do with each other.
+
+In the end the same data is what exposed it. On the night of September 10th, while looking at the web's share of payments, one question was left over. Why is there not a single Android payment, when there is always a steady trickle?
+
+I took out my phone and pressed buy. It stopped at "Processing…". Leaving and coming back produced a message saying the product information could not be loaded — and **it told me to check App Store Connect.** An iOS message, on Android.
+
+## Wrong three times, right on the fourth
+
+R8 leaves a record of what it deleted: `mapping/release/usage.txt`.
+
+**First attempt.** The payment callbacks were gone. The product-details response callback, a constants class in its entirety, several `BillingClient` builder methods. A Cordova plugin is found by string and called only through interface callbacks, so it never appears in R8's reference graph. I added keep rules. **Still broken.**
+
+**Second attempt.** Looking wider, it was not only the plugin. All of `org.apache.cordova` had been cut, and the bridge class that carries JS calls into native was gone entirely. I had protected the plugin and left the framework unprotected. With the framework kept too, removals dropped from 98 to 9. **Still broken.**
+
+At this point I deployed instrumentation on every failure point, and for the first time got values back.
+
+```
+[IAP] store_init_timeout
+[IAP] product_not_found  registered: 0     ← 3ms later
+```
+
+Three milliseconds. And logcat had **not one line** of `BillingClient` output. The native call was never leaving the building.
+
+**Third attempt.** I stopped guessing and opened the app itself. Web debugging enabled on the release build, attached over the DevTools protocol, and initialization run by hand down the same path the app takes.
+
+```
+code: 6777001
+message: "Init failed - Class not found"
+platform: android-playstore
+```
+
+The real error at last. Then `apkanalyzer` opened the APK and every class was present.
+
+```
+cc.fovea.PurchasePlugin              present
+org.apache.cordova.PluginManager     present
+org.apache.cordova.ExposedJsApi      present
+res/xml/config.xml                   missing
+```
+
+It was not a class that was missing. It was the **registry**.
+
+## There were two causes
+
+`config.xml` is the Cordova plugin registry. It records which service name maps to which class. Capacitor looks that file up reflectively, by resource ID, and the resource shrinker cannot see that lookup. It decided nothing referenced the file and deleted it.
+
+<Structure
+  hint="Hover a node to keep only what it connects to"
+  nodes={[
+    { id: 'js', label: 'WebView JS', sub: 'store.initialize()', col: 0, row: 0, note: 'Where the web code starts a purchase. Nothing was ever wrong this far along.' },
+    { id: 'bridge', label: 'ExposedJsApi', sub: 'JS→native', col: 1, row: 0, note: 'The bridge that carries a JS call into native. R8 deleted it whole. Restored on the second attempt.' },
+    { id: 'manager', label: 'PluginManager', sub: 'Cordova', col: 2, row: 0, note: 'Takes a service name and finds the class. What it looks the name up in is not itself — it is config.xml.' },
+    { id: 'plugin', label: 'PurchasePlugin', sub: 'cc.fovea', col: 3, row: 0, note: 'Sitting in the APK the whole time. Nobody was calling its name.' },
+    { id: 'config', label: 'config.xml', sub: 'res/xml', col: 2, row: 1, accent: true, note: 'The plugin registry. The resource shrinker judged it unused and deleted it. This one file is why Class not found happened.' },
+    { id: 'billing', label: 'BillingClient', sub: 'Play Billing', col: 3, row: 1, note: 'The layer that actually talks to Google Play. Logcat was silent because nothing ever reached here.' },
+  ]}
+  edges={[
+    { from: 'js', to: 'bridge' },
+    { from: 'bridge', to: 'manager' },
+    { from: 'manager', to: 'config', label: 'lookup', dashed: true },
+    { from: 'manager', to: 'plugin' },
+    { from: 'plugin', to: 'billing' },
+  ]}
+/>
+
+| Cause | Enabled | What disappeared |
+|---|---|---|
+| Resource shrinking | Sep 1 | The plugin registry, `res/xml/config.xml` |
+| Code shrinking | Aug 31 | Payment callbacks, the Cordova bridge classes |
+
+**Both produce the same symptom.** It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I made two correct fixes while believing both were wrong.
+
+When the first fix is logically right and the symptom does not move, suspect a second cause before abandoning the hypothesis.
+
+## The fix
+
+One line telling the resource shrinker to keep the registry.
+
+```xml
+<!-- android/app/src/main/res/raw/keep.xml -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@xml/config" />
+```
+
+Four lines for code shrinking.
+
+```
+-keep class cc.fovea.** { *; }
+-keep class com.android.billingclient.** { *; }
+-keep class org.apache.cordova.** { *; }
+-keep class com.getcapacitor.cordova.** { *; }
+```
+
+The error classification lost two entries.
+
+```ts
+// before: [6777001, 6777002, 6777006]  ← SETUP and LOAD were filed as cancels
+const userCancelCodes = [6777006];
+```
+
+Then an event and a Sentry message on nine failure points: plugin missing, init timeout, product not found, verification failed. **Next time this path dies, an alert says so before the revenue does.**
+
+On the same phone, initialization finished in 1.1 seconds and four products came back. It went to production at 23:41 on September 10th.
+
+## How to check
+
+For anyone hitting the same thing, here are the verification commands. The resource side is the trap: inside the APK the path is shortened to something like `res/ZW.xml`, so searching by filename finds nothing.
+
+```bash
+# what R8 removed (after a build)
+grep -c "cc.fovea" android/app/build/outputs/mapping/release/usage.txt
+
+# whether the resource survived — check the mapping, not the name
+grep "xml:config" android/app/build/outputs/mapping/release/resources.txt
+
+# whether a real device got as far as native
+adb logcat | grep "D/CdvPurchase"
+```
+
+## What is still open
+
+**The loss itself is small.** Eleven app payments in August, 69,300 KRW, became zero in September. The problem is not the amount. It is that one revenue path was 100% dead and for ten days no instrument mentioned it.
+
+**I will never know how many people tried and gave up.** The failures never reached the server, so there is no data to count. How many pressed buy, watched "Processing…", and deleted the app is unobservable.
+
+**Handing an AI your code and handing it your verification are different acts.** This is the biggest thing I took from it. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. Whoever writes the code, **deciding what to verify before shipping is not delegable.**
+
+**Being rushed erased the procedure.** There was a store deadline. That is a reason and not an excuse. A release with a deadline is exactly the one that should go through the internal test track, and the judgement went the other way.
+
+**A web app in a native wrapper needs one more layer of attention.** Capacitor's own plugins ship their keep rules with the library, so they are protected. Cordova-compatible plugins are not. Normally only the web is deployed, so it is easy to forget that layer exists at all — until the day the native build is touched and the whole bill arrives at once.
+
+**It has not been a full day yet.** On a real device I have confirmed initialization and product lookup. I have not yet seen a payment from an actual user come back. Calling it fixed takes a few more days of watching.
