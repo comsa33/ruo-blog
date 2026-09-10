@@ -286,6 +286,12 @@
      land at the same optical size or the swap changes the type as well as the
      words — and the line count the box was measured for stops holding. */
   font-size: calc(14px * var(--serif-scale));
+  /* The face is set smaller, so its 1.6 leading came out shorter than the
+     summary's — three lines left a strip empty at the foot of the box, and
+     Safari, which keeps painting past a line clamp, showed the top of a
+     fourth line through it. Undo the scale on the leading and the two texts
+     share one pitch: 22.4px, line for line. */
+  line-height: calc(1.6 / var(--serif-scale));
 }
 
 .rowPeek {
@@ -293,6 +299,9 @@
      lines the summary measured, so the two occupy exactly the same box. */
   position: absolute;
   inset: 0;
+  /* Belt and braces for Safari: whatever it paints past the clamp is cut at
+     the last clamped line, not at the box. */
+  max-height: calc(var(--lines, 2) * 1.6 / var(--serif-scale) * 1em);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: var(--lines, 2);
