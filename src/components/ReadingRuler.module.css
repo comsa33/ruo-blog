@@ -36,6 +36,9 @@
   opacity: 0.26;
   z-index: 20;
   pointer-events: none;
+  /* --line-y is a centre, not a top — the marker already reads it that way.
+     Without this the line hangs a pixel below the tick it is drawn at. */
+  transform: translateY(-50%);
   transition:
     top 420ms var(--ease),
     opacity var(--dur-fast) var(--ease-state);

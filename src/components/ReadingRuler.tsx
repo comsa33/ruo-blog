@@ -97,7 +97,12 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
       const rect = bar?.getBoundingClientRect();
       const y =
         visible && rect ? rect.top + rect.height / 2 : window.innerHeight * FIXED_LINE;
-      rootRef.current?.style.setProperty('--line-y', `${Math.round(y)}px`);
+      // --line-y is the centre both the line and the marker sit on; each pulls
+      // itself up by half its own height. Rounding it to a whole pixel put the
+      // 1px line one pixel below the 1px bar, so the two ran as neighbours
+      // rather than as one line. Half-pixel centres are what land a 1px rule on
+      // an exact device pixel here, so the value is left alone.
+      rootRef.current?.style.setProperty('--line-y', `${y}px`);
 
       // Once the last section is reached the action turns into "back to top".
       const doc = document.documentElement;
