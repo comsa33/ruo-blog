@@ -97,7 +97,9 @@
   padding: 14px 16px 16px;
   border-top: 1px solid var(--line);
   background: var(--bg);
-  font-size: 14px;
+  /* The kit's explanation tier — one size across every diagram, a step under
+     the prose it annotates. */
+  font-size: 13.5px;
   line-height: 1.65;
   color: var(--ink-secondary);
   min-height: 60px;

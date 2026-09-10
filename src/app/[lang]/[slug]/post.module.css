@@ -137,16 +137,24 @@
  * what makes that excerpt legible as a piece of the article rather than as
  * another line written about it.
  */
-.prose p,
-.prose li,
-.prose blockquote {
+/*
+ * `:not(figure *)` is what makes the paragraph above true. Every block in the
+ * component kit — the diagrams, the comparison, the figure — is a <figure>,
+ * and several of them end in a <p>: the panel that explains the node under the
+ * pointer, the line under a comparison. A plain descendant selector reached
+ * into all of those and set them in the serif at the prose's own size and ink,
+ * so a hover explanation came out looking like another paragraph of the post
+ * instead of a caption on the figure. Excluding the figure subtree hands each
+ * component its own type back — it never carried prose to begin with.
+ */
+.prose :is(p, li, blockquote):not(figure *) {
   font-family: var(--font-serif);
   /* Same optical size as the sans it replaced — see --serif-scale. The face
      changes; the size does not. */
   font-size: calc(16px * var(--serif-scale));
 }
 
-.prose p {
+.prose p:not(figure *) {
   color: var(--ink);
 }
 

@@ -74,7 +74,9 @@
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  /* The kit's explanation tier — one size across every diagram, a step under
+     the prose it annotates. */
+  font-size: 13.5px;
   color: var(--ink-secondary);
 }
 
