@@ -237,6 +237,14 @@
   margin: 72px auto 0;
   padding-top: 28px;
   border-top: 1px solid var(--line);
+}
+
+/* Following the read-next rows, the footer is the bottom of that same block
+   rather than a new one: the last row's own rule already closes it, and a
+   second hairline 72px later would fence off two lines of chrome. */
+nav + .footer {
+  margin-top: 24px;
+  border-top: none;
   display: flex;
   justify-content: space-between;
   align-items: center;

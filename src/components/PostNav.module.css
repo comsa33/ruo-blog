@@ -1,0 +1,32 @@
+/*
+ * What to read after this one. The rows are the index's rows — the site has
+ * one way of presenting a post and this is not the place to invent a second —
+ * so everything here is the frame around them.
+ */
+.nav {
+  max-width: var(--prose);
+  margin: 72px auto 0;
+  border-top: 1px solid var(--line);
+}
+
+/* The label carries the reason a post is being offered: a sibling in the same
+   topic, or simply the one next to it in time. Without it the block is a pair
+   of links the reader has to account for themselves. */
+.kind {
+  color: var(--accent);
+}
+
+.kind::after {
+  content: '·';
+  margin: 0 6px;
+  color: var(--ink-tertiary);
+}
+
+/* One row at a time, the way the index does it — the other steps back out of
+   focus rather than competing with the one being considered. */
+@media (hover: hover) {
+  .nav:hover [data-nav-row]:not(:hover) {
+    opacity: 0.42;
+    filter: blur(1.2px);
+  }
+}

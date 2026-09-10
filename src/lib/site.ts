@@ -24,6 +24,12 @@ export const t = {
   copy: { ko: '복사', en: 'Copy' },
   nextSection: { ko: '다음 섹션', en: 'Next section' },
   backToTop: { ko: '맨 위로', en: 'Back to top' },
+  /* Why a post is offered at the end of another — the label says which rule
+     put it there, rather than leaving the reader to guess. */
+  readNext: { ko: '이어서', en: 'Read next' },
+  sameTopic: { ko: '같은 토픽', en: 'Same topic' },
+  olderPost: { ko: '이전 글', en: 'Older' },
+  newerPost: { ko: '다음 글', en: 'Newer' },
   copied: { ko: '복사됨', en: 'Copied' },
   search: { ko: '검색', en: 'Search' },
   found: { ko: '건', en: ' found' },

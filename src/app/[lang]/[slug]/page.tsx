@@ -1,10 +1,18 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getPost, getAllParams, getAvailableLangs, formatDate, type PostMeta } from '@/lib/posts';
+import {
+  getPost,
+  getAllParams,
+  getAvailableLangs,
+  getNeighbours,
+  formatDate,
+  type PostMeta,
+} from '@/lib/posts';
 import { ReadingRuler } from '@/components/ReadingRuler';
 import { TravelingDot } from '@/components/TravelingDot';
 import { Views } from '@/components/Views';
+import { PostNav } from '@/components/PostNav';
 import { site, t, type Lang } from '@/lib/site';
 import styles from './post.module.css';
 
@@ -128,6 +136,9 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
           <Body />
         </div>
       </article>
+
+      {/* What to read next, before the way out. */}
+      <PostNav neighbours={getNeighbours(slug, lang as Lang)} lang={lang as Lang} />
 
       <footer className={styles.footer}>
         <Link href={`/${lang}`} className={styles.back}>

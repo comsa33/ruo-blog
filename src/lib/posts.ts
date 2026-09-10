@@ -157,6 +157,53 @@ export function getPosts(lang: Lang): PostMeta[] {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** Why a post is being offered at the end of another one. */
+export type NeighbourKind = 'topic' | 'prev' | 'next';
+export type Neighbour = { post: PostMeta; kind: NeighbourKind };
+
+/**
+ * What to read after this one.
+ *
+ * Chronological neighbours are a poor answer here: the posts are unrelated
+ * engineering notes, so the one written a week earlier is usually about
+ * something else entirely. The topic is the reader's own orientation — it is
+ * printed above every title and is what the index searches — so the nearest
+ * post either side *within the same topic* comes first, which also turns a
+ * topic with several entries into a readable series.
+ *
+ * Only when that leaves a gap do the overall neighbours fill it, and the two
+ * cases are labelled differently in the UI so the reason a post is being
+ * offered is visible rather than implied.
+ */
+export function getNeighbours(slug: string, lang: Lang, limit = 2): Neighbour[] {
+  const posts = getPosts(lang); // newest first
+  const i = posts.findIndex((p) => p.slug === slug);
+  if (i === -1) return [];
+  const self = posts[i];
+
+  const out: Neighbour[] = [];
+  const taken = new Set([slug]);
+  const push = (post: PostMeta | undefined, kind: NeighbourKind) => {
+    if (!post || taken.has(post.slug) || out.length >= limit) return;
+    taken.add(post.slug);
+    out.push({ post, kind });
+  };
+
+  if (self.topic) {
+    const sameTopic = posts.filter((p) => p.topic === self.topic);
+    const j = sameTopic.findIndex((p) => p.slug === slug);
+    // Nearest on each side, newer first — the order the index reads in.
+    push(sameTopic[j - 1], 'topic');
+    push(sameTopic[j + 1], 'topic');
+  }
+
+  // posts[i - 1] is newer, posts[i + 1] older.
+  push(posts[i - 1], 'next');
+  push(posts[i + 1], 'prev');
+
+  return out;
+}
+
 export function getPost(slug: string, lang: Lang): PostMeta | null {
   return readPost(slug, lang);
 }
