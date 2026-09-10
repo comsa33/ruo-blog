@@ -67,6 +67,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
     let ready = false;
     let atHome = true;
     let returning = 0;
+    let flying = 0;
     let currentHost: HTMLElement | null = null;
     let lastX = NaN;
     let lastY = NaN;
@@ -129,6 +130,22 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       };
     };
 
+    /**
+     * The dot rides above the sticky header only while it is travelling to or
+     * from the brand mark, which lives inside it. Left permanently above, a dot
+     * resting on a heading that has scrolled under the header stays crisp on
+     * top of it while its own heading fades away underneath — which reads as a
+     * layering bug, because it is one.
+     */
+    const markHomeFlight = () => {
+      dot.setAttribute('data-flying', '');
+      if (flying) window.clearTimeout(flying);
+      flying = window.setTimeout(() => {
+        flying = 0;
+        dot.removeAttribute('data-flying');
+      }, FLIGHT_MS);
+    };
+
     const settleHome = () => {
       returning = 0;
       atHome = true;
@@ -146,6 +163,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
         settleHome();
         return;
       }
+      markHomeFlight();
       dot.style.setProperty('--size', `${s.size}px`);
       moveTo(s.x, s.y);
       returning = window.setTimeout(settleHome, FLIGHT_MS);
@@ -159,6 +177,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       }
       if (atHome) {
         atHome = false;
+        markHomeFlight();
         dot.removeAttribute('data-home');
         home?.setAttribute('data-dot-state', 'away');
         const h = homeSpot();
@@ -251,6 +270,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       mo?.disconnect();
       if (frame) cancelAnimationFrame(frame);
       if (returning) window.clearTimeout(returning);
+      if (flying) window.clearTimeout(flying);
       home?.removeAttribute('data-dot-state');
       anchors.forEach((el) => {
         el.removeAttribute('data-dot');

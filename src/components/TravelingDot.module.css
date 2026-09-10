@@ -20,10 +20,17 @@
   width: var(--size);
   height: var(--size);
   pointer-events: none;
-  /* Above the sticky header, so the flight from the brand mark is not seen
-     through its backdrop. */
-  z-index: 60;
+  /* Under the sticky header at rest: a heading that scrolls up passes beneath
+     it, and its dot has to go with it. */
+  z-index: 10;
   will-change: transform;
+}
+
+/* Above the header only while flying to or from the brand mark, which sits
+   inside it — otherwise that journey would be seen through its backdrop. Set
+   by the component for the length of the flight. */
+.dot[data-flying] {
+  z-index: 60;
 }
 
 /* At home the brand mark in the header stands in for it, so it is not drawn.
