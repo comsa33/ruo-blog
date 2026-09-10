@@ -50,8 +50,20 @@ const WORD_CAP = 30;
 const HOVER_INTENT_MS = 200;
 /** Where in the viewport a row counts as "being read" — the dot's own line. */
 const READ_AT = 0.44;
-/** How long the edge takes to cross the row. */
+/*
+ * The edge is a speed, not a duration. Fixed at 840ms it crossed 807px on a
+ * desktop row and about 350px on a phone — the same time over 2.3x the
+ * distance, so it read as hurried on the wide one and measured on the narrow
+ * one. Holding the speed exactly would put a desktop row near two seconds, so
+ * the duration grows with the width but well short of proportionally, and
+ * stops climbing at a point where the row is still worth waiting for.
+ */
 const EDGE_MS = 840;
+/** The width the base duration was judged at — a phone. */
+const EDGE_REF_W = 350;
+const EDGE_MAX_MS = 1150;
+const edgeDuration = (width: number) =>
+  Math.min(EDGE_MAX_MS, EDGE_MS * Math.pow(Math.max(width, 1) / EDGE_REF_W, 0.45));
 /** On a touch device the row has to sit on the line this long before it turns.
  *  Without it the swap fires every frame of a flick, row after row, and reads
  *  as a glitch rather than as an answer to where the reader stopped. */
@@ -138,9 +150,10 @@ function Row({
     }
 
     let frame = 0;
+    const dur = edgeDuration(slot.getBoundingClientRect().width);
     const t0 = performance.now();
     const tick = (t: number) => {
-      const k = Math.min(1, (t - t0) / EDGE_MS);
+      const k = Math.min(1, (t - t0) / dur);
       slot.style.setProperty('--edge', String(from + (to - from) * easeOut(k)));
       if (k < 1) frame = requestAnimationFrame(tick);
       // The row is only "running" while the edge is somewhere in the middle of
