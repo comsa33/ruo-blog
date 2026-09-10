@@ -165,6 +165,36 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
     };
 
     /**
+     * The caret the mark stands up into, as scale factors on the ball.
+     *
+     * It has to be as tall as the type it is ending, and the mark is a fixed
+     * few pixels while the prose it sits in is not. A ratio written into the
+     * keyframes would therefore be right at one size and wrong everywhere else.
+     * Measuring the seat's own resolved font size and dividing by the mark
+     * gives a caret that is the height of the line it ends, whatever that is.
+     */
+    const sizeCaret = (host: HTMLElement, size: number) => {
+      if (!ball) return;
+      const cs = getComputedStyle(host);
+      const fontSize = parseFloat(cs.fontSize) || 16;
+      const ratio = parseFloat(cs.getPropertyValue('--caret-height')) || 1;
+      const width = parseFloat(cs.getPropertyValue('--caret-width')) || 1.4;
+      const h = (fontSize * ratio) / size;
+      const w = width / size;
+      ball.style.setProperty('--caret-y', String(h));
+      ball.style.setProperty('--caret-x', String(w));
+      // The jump goes well past the caret and recoils back through it before
+      // settling — overshoot, undershoot, rest. That three-beat is what makes
+      // it read as a spring rather than as a shape growing.
+      ball.style.setProperty('--caret-y-over', String(h * 1.5));
+      ball.style.setProperty('--caret-x-over', String(w * 0.62));
+      // Coming back through it, squat and a little wider — the give of
+      // something that overshot and is settling.
+      ball.style.setProperty('--caret-y-under', String(h * 0.93));
+      ball.style.setProperty('--caret-x-under', String(w * 1.14));
+    };
+
+    /**
      * The closing mark is the only host the dot arrives at for good, so it is
      * the only one worth landing on. The hop waits out the flight, then takes
      * the ball over from the travel deformation.
@@ -173,6 +203,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       window.clearTimeout(landing);
       ball?.removeAttribute('data-land');
       if (!ball || !host.hasAttribute('data-dot-end')) return;
+      sizeCaret(host, spotFor(host).size);
       landing = window.setTimeout(() => {
         ball.removeAttribute('data-squish');
         void ball.offsetWidth; // let the animation restart
