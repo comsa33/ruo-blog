@@ -286,14 +286,22 @@ pre {
  * focus. Same values as the index uses for the rows it is not on, so this
  * introduces no new vocabulary. Set by ReadingRuler on pointerenter/leave.
  */
-[data-prose] {
+/* The rule goes on <article>, not on [data-prose] inside it. That element
+   carries .rise, whose `animation: fadeInBlur ... both` keeps its last keyframe
+   applied for good — and an animation's declarations beat a normal one in the
+   cascade, so a hover rule on it never took effect. A filter on the ancestor is
+   not in that contest and applies to the whole subtree. The ruler is a sibling
+   of <article>, so it stays sharp; the dot inside is absolutely positioned
+   against .article, which is already position: relative, so making it a
+   containing block changes nothing. */
+article {
   transition:
     opacity var(--dur-instant) ease-out,
     filter var(--dur-instant) ease-out;
 }
 
 @media (hover: hover) {
-  [data-ruler-hover] [data-prose] {
+  [data-ruler-hover] article {
     opacity: 0.42;
     filter: blur(1.2px);
   }
