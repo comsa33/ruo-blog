@@ -203,11 +203,6 @@
     opacity: 0.42;
     filter: blur(1.2px);
   }
-  .row:hover .preview {
-    opacity: 1;
-    filter: blur(0);
-    transform: none;
-  }
   .row:hover .rowTitle {
     color: var(--accent);
   }
@@ -261,64 +256,94 @@
     transform var(--dur-instant) ease-out;
 }
 
-.rowDesc {
+/*
+ * The summary and the post's opening share one slot, stacked. While the row
+ * holds the dot the summary's words leave and the opening's arrive, one word
+ * at a time (Staggered Text). The opening is clamped to the summary's line
+ * count — --lines, measured by the row — so the row never changes height.
+ */
+.slot {
+  position: relative;
   margin-top: 5px;
+}
+
+.rowDesc,
+.rowPeek {
+  margin: 0;
   font-size: 14px;
   line-height: 1.6;
   color: var(--ink-secondary);
 }
 
+.rowPeek {
+  /* Laid over the summary, never adding to the row's height. The clamp's
+     ellipsis is drawn by the box, not by a word, so the box is hidden
+     outright while the words are away — after they have left, on the way out. */
+  position: absolute;
+  inset: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines, 2);
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear 420ms;
+}
+
+.row[data-peek='in'] .rowPeek {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.w {
+  display: inline-block;
+}
+
+.rowPeek .w {
+  opacity: 0;
+}
+
+/* Same entrance as the site's, local so the module can name it. */
+@keyframes peekIn {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+.row[data-peek='in'] .rowDesc .w {
+  animation: vanish var(--dur-fast) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 6ms);
+}
+
+.row[data-peek='in'] .rowPeek .w {
+  animation: peekIn var(--dur-fast) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 6ms + 100ms);
+}
+
+.row[data-peek='out'] .rowDesc .w {
+  animation: peekIn var(--dur-fast) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 6ms + 100ms);
+}
+
+.row[data-peek='out'] .rowPeek .w {
+  opacity: 1;
+  animation: vanish var(--dur-fast) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 6ms);
+}
+
 .meta {
-  position: relative;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink-tertiary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-/*
- * The figure preview: a sketch of the post's first diagram, over the date.
- * Anchored to the date rather than the pointer so nothing else moves, and
- * only on devices with a hover — there is nothing to anchor a tap to.
- */
-.preview {
-  display: none;
-}
-
-@media (hover: hover) {
-  .preview {
-    display: block;
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 10px);
-    width: 160px;
-    height: 96px;
-    z-index: 2;
-    color: var(--ink-secondary);
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 8%, transparent);
-    opacity: 0;
-    filter: blur(4px);
-    transform: translateY(6px);
-    transition:
-      opacity var(--dur-fast) var(--ease-state),
-      filter var(--dur-fast) var(--ease-state),
-      transform var(--dur-fast) var(--ease-state);
-    pointer-events: none;
-  }
-}
-
-.previewCap {
-  position: absolute;
-  left: 8px;
-  bottom: 6px;
-  font-size: 9.5px;
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--ink-tertiary);
 }
 
 .empty {

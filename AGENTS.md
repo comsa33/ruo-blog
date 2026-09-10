@@ -53,10 +53,10 @@ it; the frontmatter carries the date.
 ---
 title: '예시가 지시문을 이긴다'
 description: '한 줄 요약. 목록과 검색 결과에 그대로 노출된다.'
-topic: '에이전트 메모리'    # required — what the post is about
-date: 2026-09-08          # YYYY-MM-DD
+topic: '에이전트 메모리' # required — what the post is about
+date: 2026-09-08 # YYYY-MM-DD
 tags: ['프롬프트 설계', 'LLM', '한국어']
-draft: false              # true hides it in production, shows it in dev
+draft: false # true hides it in production, shows it in dev
 ---
 ```
 
@@ -68,7 +68,7 @@ subject a person would recognise, not a stack keyword. `topic` is the subject
 The label above the title is always `topic`.
 
 There is no post type. The index is one list, newest first. An earlier
-note/log split described the *form* of a post rather than what a reader gets
+note/log split described the _form_ of a post rather than what a reader gets
 from it, and every post turned out to be both — so it was removed rather than
 kept as an empty section. If a distinction is ever needed it should be about
 the contract with the reader (does this reach a conclusion or not), and it
@@ -85,34 +85,38 @@ with no import. **Prefer composing these over writing new components.**
 
 ### Explanatory engines — use these first
 
-| Component | Use it for |
-|---|---|
-| `<Structure>` | System architecture. Hovering a node dims everything it is not connected to. |
-| `<Sequence>` | Ordered interaction between actors. Step through, or auto-play. |
-| `<Breakdown>` | What a single number is made of. One bar, hoverable segments. |
-| `<Series>` | A measurement over time. Lines draw themselves once on reveal. |
-| `<Transform>` | The same input through different pipelines, with the output re-resolving. |
-| `<Threshold>` | Cluster distributions against a threshold the reader can move. |
-| `<Playground>` | A parameter the reader drags, with consequences recomputed. |
+| Component      | Use it for                                                                   |
+| -------------- | ---------------------------------------------------------------------------- |
+| `<Structure>`  | System architecture. Hovering a node dims everything it is not connected to. |
+| `<Sequence>`   | Ordered interaction between actors. Step through, or auto-play.              |
+| `<Breakdown>`  | What a single number is made of. One bar, hoverable segments.                |
+| `<Series>`     | A measurement over time. Lines draw themselves once on reveal.               |
+| `<Transform>`  | The same input through different pipelines, with the output re-resolving.    |
+| `<Threshold>`  | Cluster distributions against a threshold the reader can move.               |
+| `<Playground>` | A parameter the reader drags, with consequences recomputed.                  |
 
 ### Reading chrome — automatic, never authored
 
 These attach themselves to every post. Do not add them to MDX, and do not add
 per-post configuration for them.
 
-| Component | Behaviour |
-|---|---|
-| `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block), a guide line drawn at the active tick, and an action at the line's right end. Ticks respond to pointer distance. Below 1180px the ruler is hidden, the line moves to a fixed 62% of the viewport, and both keep working. |
-| `<TravelingDot>` | One accent dot that moves to the heading or caption the reader is on. Anchors are discovered from `h1/h2/h3/figcaption`, so nothing needs marking up. |
-| `<Views>` | `1,284회 · 오늘 32` in the meta line. Counted once per person per KST day via `/api/views/[slug]`, stored in the Redis named by `KV_REST_API_URL` / `KV_REST_API_TOKEN` (see `.env.example`). With no store configured the clause is simply absent. |
-| `<SiteFooter>` | Sits on the page *behind* the sheet (`sticky; bottom: 0`, sheet `z-index: 1`), so it is revealed as the sheet scrolls off it. Site links, RSS, llms.txt. Rendered once in the `[lang]` layout. |
-| `<PostAxis>` | Index only. One tick per post on a year axis under the hero; pointer proximity grows ticks (the ruler's `--near` rule), the nearest names its post, a click scrolls to the row and sends the dot there. `aria-hidden` — the list is the accessible thing. Below 640px only quarter labels show. |
-| `<FigureSketch>` | Index only. A glyph for each explanatory engine. The index shows the one for `post.figure` (the first diagram in the body, derived in `posts.ts`) above the date on row hover. Hover devices only. |
+| Component        | Behaviour                                                                                                                                                                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block), a guide line drawn at the active tick, and an action at the line's right end. Ticks respond to pointer distance. Below 1180px the ruler is hidden, the line moves to a fixed 62% of the viewport, and both keep working.               |
+| `<TravelingDot>` | One accent dot that moves to the heading or caption the reader is on. Anchors are discovered from `h1/h2/h3/figcaption`, so nothing needs marking up.                                                                                                                                           |
+| `<Views>`        | `1,284회 · 오늘 32` in the meta line. Counted once per person per KST day via `/api/views/[slug]`, stored in the Redis named by `KV_REST_API_URL` / `KV_REST_API_TOKEN` (see `.env.example`). With no store configured the clause is simply absent.                                             |
+| `<SiteFooter>`   | Sits on the page _behind_ the sheet (`sticky; bottom: 0`, sheet `z-index: 1`), so it is revealed as the sheet scrolls off it. Site links, RSS, llms.txt. Rendered once in the `[lang]` layout.                                                                                                  |
+| `<PostAxis>`     | Index only. One tick per post on a year axis under the hero; pointer proximity grows ticks (the ruler's `--near` rule), the nearest names its post, a click scrolls to the row and sends the dot there. `aria-hidden` — the list is the accessible thing. Below 640px only quarter labels show. |
 
 The index (`<PostList>`) searches title, description, topic and tags — the
 frontmatter, never the body — and a tag on a post page links to `/ko?q=<tag>`.
-Hovering a row (hover devices only) blurs the rest of the list and flies the
-dot to it; Esc on a query lets the letters leave one at a time before the field
+The row that holds the dot shows the post's opening in place of its summary,
+one word at a time (`excerpt`, derived in `posts.ts` from the first paragraphs;
+clamped to the summary's line count, so the row never changes height). Which
+row holds the dot depends on the pointer: on hover devices the mouse (after a
+200ms rest, and the rest of the list blurs), without one the scroll — the row
+on the reading line at 44% of the viewport, the same line the dot uses on a
+post. Esc on a query lets the letters leave one at a time before the field
 clears. The hero arrives a word at a time (`.rise` per word, `--stagger: 40ms`
 on the hero), and the theme spreads from the toggle as a circle
 (`themeSpread` in `globals.css`, origin written by `ThemeToggle`).
@@ -140,9 +144,11 @@ prop will throw at render time.** Pass precomputed data instead.
 
 ```mdx
 {/* WRONG — throws "Functions cannot be passed directly to Client Components" */}
+
 <Playground compute={(n) => ({ ... })} />
 
 {/* RIGHT — the expression evaluates on the server into plain data */}
+
 <Playground
   param={{ label: '한 번에 묶는 턴 수', initial: 5, unit: '턴' }}
   rows={Array.from({ length: 20 }, (_, i) => {
@@ -192,11 +198,11 @@ add a colour, add it to both blocks.
 
 ### Motion
 
-| Purpose | Duration | Easing |
-|---|---|---|
-| Hover, press, dim | `--dur-instant` 150ms | `ease-out` |
-| State change | `--dur-fast` 200ms | `--ease-state` |
-| Entrance | `--dur-slow` 640ms | `--ease-out` |
+| Purpose           | Duration              | Easing         |
+| ----------------- | --------------------- | -------------- |
+| Hover, press, dim | `--dur-instant` 150ms | `ease-out`     |
+| State change      | `--dur-fast` 200ms    | `--ease-state` |
+| Entrance          | `--dur-slow` 640ms    | `--ease-out`   |
 
 - **Interactions never exceed 200ms.** Entrances may be slower; responses to a
   click may not.
@@ -251,20 +257,23 @@ product; the code is not.
 Most source material comes from work at a company. Before writing:
 
 **Remove entirely**
+
 - Project codenames, internal service names, internal product names
 - Colleague names, customer names, tenant or service IDs
 - Ticket numbers, internal wiki links, repository paths
 - Internal endpoints, hostnames, infrastructure settings (pool sizes, pod config)
 
 **Generalise**
-| Internal | Write instead |
-|---|---|
-| the project codename | "the memory service" |
-| the chat log system | "the transcript store" |
-| the internal LLM gateway | "the model gateway" |
-| the orchestrator | "the agent" |
+
+| Internal                 | Write instead          |
+| ------------------------ | ---------------------- |
+| the project codename     | "the memory service"   |
+| the chat log system      | "the transcript store" |
+| the internal LLM gateway | "the model gateway"    |
+| the orchestrator         | "the agent"            |
 
 **Safe to publish**
+
 - Measured numbers and benchmark results, stated as measurements
 - Design decisions and the trade-offs behind them
 - Public open-source library names and versions

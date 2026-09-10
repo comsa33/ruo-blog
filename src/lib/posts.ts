@@ -5,18 +5,6 @@ import { LANGS, type Lang } from './site';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'posts');
 
-/** The explanatory engines (src/components/diagram). Order is irrelevant. */
-export const FIGURES = [
-  'Sequence',
-  'Structure',
-  'Breakdown',
-  'Series',
-  'Transform',
-  'Threshold',
-  'Playground',
-] as const;
-export type FigureKind = (typeof FIGURES)[number];
-
 export type PostMeta = {
   slug: string;
   lang: Lang;
@@ -30,28 +18,20 @@ export type PostMeta = {
   draft: boolean;
   /** Estimated reading time in minutes. */
   readingTime: number;
-  /** The first diagram in the body, or null for a post that has none. */
-  figure: FigureKind | null;
+  /** How the post opens: its first paragraphs as plain text, cut at ~240 chars. */
+  excerpt: string;
 };
 
-/**
- * The first explanatory engine in the body. The index previews it on hover,
- * so a reader sees what kind of figure a post explains itself with. Derived,
- * never authored — nothing in the frontmatter has to be kept in step.
- */
-function firstFigure(body: string): FigureKind | null {
-  const m = new RegExp(`^\\s*<(${FIGURES.join('|')})\\b`, 'm').exec(body);
-  return m ? (m[1] as FigureKind) : null;
-}
+/** Roughly what the index can show in three lines on a phone, with room to clamp. */
+const EXCERPT_CHARS = 240;
 
 /**
- * Korean prose is counted by character, English by word. Mixing the two in one
- * formula gives wildly wrong numbers for Korean posts, which are our default.
+ * The body's prose lines, with the component blocks taken out and counted.
+ * Component blocks carry data, not prose. They span many lines and contain
+ * `>` inside arrow functions, so a tag regex cannot remove them — track the
+ * block instead, from `<Capital` until the line that closes it.
  */
-function readingTime(body: string, lang: Lang): number {
-  // Component blocks carry data, not prose. They span many lines and contain
-  // `>` inside arrow functions, so a tag regex cannot remove them — track the
-  // block instead, from `<Capital` until the line that closes it.
+function proseOf(body: string): { lines: string[]; figures: number } {
   const lines = body.replace(/```[\s\S]*?```/g, '').split('\n');
   const prose: string[] = [];
   let depth = 0;
@@ -70,8 +50,16 @@ function readingTime(body: string, lang: Lang): number {
     }
     prose.push(line);
   }
+  return { lines: prose, figures };
+}
 
-  const text = prose
+/**
+ * Korean prose is counted by character, English by word. Mixing the two in one
+ * formula gives wildly wrong numbers for Korean posts, which are our default.
+ */
+function readingTime(body: string, lang: Lang): number {
+  const { lines, figures } = proseOf(body);
+  const text = lines
     .join('\n')
     .replace(/<[^>]+>/g, '')
     .trim();
@@ -80,6 +68,56 @@ function readingTime(body: string, lang: Lang): number {
   // An interactive figure is not free to read. Half a minute each is closer to
   // the truth than pretending the diagrams take no time at all.
   return Math.max(1, Math.round(reading + figures * 0.5));
+}
+
+/**
+ * The opening of the post, for the index to show in place of the summary.
+ * Paragraphs only — headings, lists, quotes, tables and anything a component
+ * left behind are skipped — with the markdown taken off so it reads as the
+ * sentence the reader will meet on the page.
+ */
+function excerptOf(body: string): string {
+  const paragraphs: string[] = [];
+  let current: string[] = [];
+  const flush = () => {
+    if (current.length) paragraphs.push(current.join(' '));
+    current = [];
+  };
+  for (const raw of proseOf(body).lines) {
+    const line = raw.trim();
+    if (!line) {
+      flush();
+      continue;
+    }
+    if (/^(#|[-*] |\d+\. |>|\||!\[|\{|import |export |---)/.test(line)) {
+      flush();
+      continue;
+    }
+    current.push(line);
+  }
+  flush();
+
+  let out = '';
+  for (const p of paragraphs) {
+    const plain = p
+      .replace(/<[^>]+>/g, '')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/(\*\*|__)(.+?)\1/g, '$2')
+      .replace(/(\*|_)(.+?)\1/g, '$2')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!plain) continue;
+    out = out ? `${out} ${plain}` : plain;
+    if (out.length >= EXCERPT_CHARS) break;
+  }
+  if (out.length > EXCERPT_CHARS) {
+    // Cut on a space, so no word is left half-written before the ellipsis.
+    const cut = out.lastIndexOf(' ', EXCERPT_CHARS);
+    out = `${out.slice(0, cut > EXCERPT_CHARS * 0.6 ? cut : EXCERPT_CHARS).trimEnd()}…`;
+  }
+  return out;
 }
 
 function readPost(slug: string, lang: Lang): PostMeta | null {
@@ -102,7 +140,7 @@ function readPost(slug: string, lang: Lang): PostMeta | null {
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     draft: Boolean(data.draft),
     readingTime: readingTime(content, lang),
-    figure: firstFigure(content),
+    excerpt: excerptOf(content),
   };
 }
 

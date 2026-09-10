@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDate } from '@/lib/date';
 import { TravelingDot } from './TravelingDot';
 import { PostAxis } from './PostAxis';
-import { FigureSketch } from './FigureSketch';
 import type { PostMeta } from '@/lib/posts';
 import { t, type Lang } from '@/lib/site';
 import styles from './PostList.module.css';
@@ -45,6 +44,34 @@ function Marked({ text, q }: { text: string; q: string }) {
 /** Between one letter leaving and the next. Tight, so a word is gone in ~300ms. */
 const VANISH_STEP_MS = 16;
 
+/** Words past this all move together; the stagger stays under half a second. */
+const WORD_CAP = 30;
+/** The pointer has to rest on a row this long before its text turns. */
+const HOVER_INTENT_MS = 200;
+/** Where in the viewport a row counts as "being read" — the dot's own line. */
+const READ_AT = 0.44;
+
+/**
+ * A run of text as words, each its own inline-block with an order, so the
+ * summary and the opening can trade places one word at a time. A multi-word
+ * query is marked word by word — the line is split anyway.
+ */
+function Words({ text, q }: { text: string; q?: string }) {
+  const tokens = q ? q.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  return text.split(' ').map((word, i) => {
+    const lower = word.toLowerCase();
+    const hit = tokens.find((t) => lower.includes(t));
+    return (
+      <Fragment key={i}>
+        {i > 0 && ' '}
+        <span className={styles.w} style={{ '--i': Math.min(i, WORD_CAP) } as React.CSSProperties}>
+          {hit ? <Marked text={word} q={hit} /> : word}
+        </span>
+      </Fragment>
+    );
+  });
+}
+
 /** `2026 · 09` — the rail marker. Digits only, so it reads in both languages. */
 function monthOf(date: string) {
   return `${date.slice(0, 4)} · ${date.slice(5, 7)}`;
@@ -72,9 +99,38 @@ function Row({
   /** Absent on devices without hover, so a tap never leaves a row "hovered". */
   onHover?: (i: number) => void;
 }) {
+  // The summary turns into the opening while the row holds the dot, and turns
+  // back when it leaves. Three phases so the return animates too, and a row
+  // that was never active never animates at all.
+  const [peek, setPeek] = useState<'idle' | 'in' | 'out'>('idle');
+  useEffect(() => {
+    if (active) setPeek('in');
+    else setPeek((p) => (p === 'in' ? 'out' : p));
+  }, [active]);
+
+  // The opening is clamped to exactly as many lines as the summary takes, so
+  // the row never changes height. Measured, since that depends on the width.
+  const descRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    const measure = () => {
+      const lh = parseFloat(getComputedStyle(el).lineHeight) || 22.4;
+      el.parentElement?.style.setProperty(
+        '--lines',
+        String(Math.max(1, Math.round(el.offsetHeight / lh))),
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <li
       id={`post-${post.slug}`}
+      data-row={index}
       className={entering ? 'rise' : undefined}
       style={{ '--i': i } as React.CSSProperties}
     >
@@ -82,6 +138,7 @@ function Row({
         href={`/${lang}/${post.slug}`}
         className={styles.row}
         data-active={active || undefined}
+        data-peek={peek === 'idle' ? undefined : peek}
         onPointerEnter={onHover && (() => onHover(index))}
       >
         <div>
@@ -98,21 +155,21 @@ function Row({
             </span>
           </h3>
           {post.description && (
-            <p className={styles.rowDesc}>
-              <Marked text={post.description} q={q} />
-            </p>
+            <div className={styles.slot}>
+              <p ref={descRef} className={styles.rowDesc}>
+                <Words text={post.description} q={q} />
+              </p>
+              {/* The post's first paragraphs, in the summary's place while the
+                  row holds the dot. Same lines, same height. */}
+              {post.excerpt && (
+                <p className={styles.rowPeek} aria-hidden>
+                  <Words text={post.excerpt} />
+                </p>
+              )}
+            </div>
           )}
         </div>
-        <span className={styles.meta}>
-          {formatDate(post.date, lang)}
-          {/* What kind of figure the post explains itself with; hover only. */}
-          {post.figure && (
-            <span className={styles.preview} aria-hidden>
-              <FigureSketch kind={post.figure} />
-              <span className={styles.previewCap}>{post.figure}</span>
-            </span>
-          )}
-        </span>
+        <span className={styles.meta}>{formatDate(post.date, lang)}</span>
       </Link>
     </li>
   );
@@ -134,15 +191,60 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
   // Esc does not blank the field — the letters leave one at a time first.
   const [vanishing, setVanishing] = useState(false);
   const vanishTimer = useRef(0);
-  // Hover states are only wired on devices that have a hover.
-  const [canHover, setCanHover] = useState(false);
+  // Which pointer this device has. With a hover, the pointer is the mouse and
+  // a row has to be rested on for a moment. Without one, the pointer is the
+  // scroll: the row on the reading line is the one that holds the dot.
+  const [hoverable, setHoverable] = useState<boolean | null>(null);
+  const hoverTimer = useRef(0);
+  const listRef = useRef<HTMLUListElement>(null);
   useEffect(() => {
-    setCanHover(matchMedia('(hover: hover)').matches);
+    setHoverable(matchMedia('(hover: hover)').matches);
     return () => {
       window.clearTimeout(pinTimer.current);
       window.clearTimeout(vanishTimer.current);
+      window.clearTimeout(hoverTimer.current);
     };
   }, []);
+
+  const hoverAt = (i: number) => {
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => setHover(i), HOVER_INTENT_MS);
+  };
+  const hoverOff = () => {
+    window.clearTimeout(hoverTimer.current);
+    setHover(-1);
+  };
+
+  useEffect(() => {
+    if (hoverable !== false) return;
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const list = listRef.current;
+      if (!list) return;
+      const lineY = window.innerHeight * READ_AT;
+      let found = -1;
+      for (const el of list.querySelectorAll<HTMLElement>('[data-row]')) {
+        const r = el.getBoundingClientRect();
+        if (r.top <= lineY && lineY < r.bottom) {
+          found = Number(el.dataset.row);
+          break;
+        }
+      }
+      setHover(found);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    place();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [hoverable]);
 
   // Arriving with ?q= — from a tag on a post page, or a shared link.
   useEffect(() => {
@@ -315,7 +417,7 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
       {query && <p className={styles.scope}>{t.searchScope[lang]}</p>}
 
       {shown.length ? (
-        <ul className={styles.list} onPointerLeave={canHover ? () => setHover(-1) : undefined}>
+        <ul ref={listRef} className={styles.list} onPointerLeave={hoverable ? hoverOff : undefined}>
           {groups.map((g) => (
             <li key={g.month} className={styles.group}>
               <span className={styles.rail} aria-hidden>
@@ -334,7 +436,7 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
                       index={i}
                       i={i + 4}
                       entering={!touched}
-                      onHover={canHover ? setHover : undefined}
+                      onHover={hoverable ? hoverAt : undefined}
                     />
                   );
                 })}
