@@ -68,6 +68,13 @@
   flex-direction: column;
   gap: 8px;
   padding: 4px 0;
+  /* The hit area is the strip of bars, not the labels. Labels sit in the flow
+     of each tick and are nowrap, so without this the box grows to the longest
+     section name — around 400px — and reaches past the sheet edge onto the
+     first characters of the prose. Hovering the start of a line would then
+     count as hovering the ruler. The labels still draw past this width; they
+     are pointer-events: none, and nothing here clips. */
+  width: var(--tick-active);
 }
 
 .tick {

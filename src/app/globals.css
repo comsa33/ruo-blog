@@ -278,6 +278,27 @@ pre {
   padding-left: 1.35em;
 }
 
+/* ---------- Ruler engaged ----------
+ * The reading ruler is a navigation layer over the article, and its section
+ * names run past the gutter onto the sheet. Rather than laying a plate behind
+ * them — this design has no material, only hairlines — the article recedes
+ * while the pointer is in the ruler, and the names are then the only thing in
+ * focus. Same values as the index uses for the rows it is not on, so this
+ * introduces no new vocabulary. Set by ReadingRuler on pointerenter/leave.
+ */
+[data-prose] {
+  transition:
+    opacity var(--dur-instant) ease-out,
+    filter var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  [data-ruler-hover] [data-prose] {
+    opacity: 0.42;
+    filter: blur(1.2px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

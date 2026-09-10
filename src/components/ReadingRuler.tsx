@@ -150,12 +150,32 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
       for (const row of rows) row.style.setProperty('--near', '0');
     };
 
+    /* While the pointer is actually inside the ruler, the article steps back so
+     * the section names read — the same move the index makes when one row is
+     * hovered. The flag goes on the document because the ruler does not wrap
+     * the article, so :has() cannot reach it; globals.css owns the rule.
+     * Deliberately driven by enter/leave and not by --near: proximity is
+     * continuous and would flicker the whole page for a pointer merely
+     * crossing the gutter on its way somewhere else. */
+    const setEngaged = (on: boolean) => {
+      if (on) document.documentElement.dataset.rulerHover = '';
+      else delete document.documentElement.dataset.rulerHover;
+    };
+    const onEnter = () => setEngaged(true);
+    const onLeaveAll = () => {
+      setEngaged(false);
+      onLeave();
+    };
+
+    ruler.addEventListener('pointerenter', onEnter);
     ruler.addEventListener('pointermove', onMove);
-    ruler.addEventListener('pointerleave', onLeave);
+    ruler.addEventListener('pointerleave', onLeaveAll);
     return () => {
+      ruler.removeEventListener('pointerenter', onEnter);
       ruler.removeEventListener('pointermove', onMove);
-      ruler.removeEventListener('pointerleave', onLeave);
+      ruler.removeEventListener('pointerleave', onLeaveAll);
       if (frame) cancelAnimationFrame(frame);
+      setEngaged(false);
     };
   }, [ticks.length]);
 
