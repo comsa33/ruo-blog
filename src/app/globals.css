@@ -57,6 +57,9 @@
   --font-body:
     'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,
     'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  /* The list's excerpt only. A summary is written *about* a post; the opening
+     line is the post itself, and the serif is what says so. */
+  --font-serif: 'Noto Serif KR', ui-serif, Georgia, 'Apple SD Gothic Neo', serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
   color-scheme: light;

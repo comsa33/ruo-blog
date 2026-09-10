@@ -49,6 +49,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
+        {/* Serif, for the excerpt in the index list and nowhere else. Google
+            serves it as unicode-range subsets, so a row pulls only the slices
+            its own characters need. */}
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400&display=swap"
+        />
       </head>
       <body>{children}</body>
     </html>

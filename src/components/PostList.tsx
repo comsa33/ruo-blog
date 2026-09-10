@@ -50,6 +50,16 @@ const WORD_CAP = 30;
 const HOVER_INTENT_MS = 200;
 /** Where in the viewport a row counts as "being read" — the dot's own line. */
 const READ_AT = 0.44;
+/** How long the edge takes to cross the row. */
+const EDGE_MS = 840;
+/** On a touch device the row has to sit on the line this long before it turns.
+ *  Without it the swap fires every frame of a flick, row after row, and reads
+ *  as a glitch rather than as an answer to where the reader stopped. */
+const SCROLL_INTENT_MS = 180;
+
+/** The site's ease-out, as a function — the edge decelerates like everything
+ *  else here does. */
+const easeOut = (k: number) => 1 - Math.pow(1 - k, 3);
 
 /**
  * A run of text as words, each its own inline-block with an order, so the
@@ -99,13 +109,46 @@ function Row({
   /** Absent on devices without hover, so a tap never leaves a row "hovered". */
   onHover?: (i: number) => void;
 }) {
-  // The summary turns into the opening while the row holds the dot, and turns
-  // back when it leaves. Three phases so the return animates too, and a row
-  // that was never active never animates at all.
-  const [peek, setPeek] = useState<'idle' | 'in' | 'out'>('idle');
+  // One edge crosses the box: ahead of it the summary, behind it the opening.
+  // It is driven here rather than by a CSS transition because the masks, the
+  // blur band and the accent line all read the same position, and a class
+  // change cannot keep three of them in step through a reversal.
+  const rowRef = useRef<HTMLAnchorElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
   useEffect(() => {
-    if (active) setPeek('in');
-    else setPeek((p) => (p === 'in' ? 'out' : p));
+    const row = rowRef.current;
+    const slot = slotRef.current;
+    if (!row || !slot) return;
+    // A row that has never been active must not animate its way to a standstill
+    // on mount — it simply is at rest.
+    if (!active && !started.current) return;
+    started.current = true;
+
+    row.setAttribute('data-dir', active ? 'fwd' : 'back');
+    row.setAttribute('data-run', '');
+
+    const from = parseFloat(getComputedStyle(slot).getPropertyValue('--edge')) || 0;
+    const to = active ? 100 : 0;
+
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      slot.style.setProperty('--edge', String(to));
+      if (!active) row.removeAttribute('data-run');
+      return;
+    }
+
+    let frame = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / EDGE_MS);
+      slot.style.setProperty('--edge', String(from + (to - from) * easeOut(k)));
+      if (k < 1) frame = requestAnimationFrame(tick);
+      // The row is only "running" while the edge is somewhere in the middle of
+      // it; once home again it goes back to being an ordinary row.
+      else if (!active) row.removeAttribute('data-run');
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [active]);
 
   // The opening is clamped to exactly as many lines as the summary takes, so
@@ -135,10 +178,10 @@ function Row({
       style={{ '--i': i } as React.CSSProperties}
     >
       <Link
+        ref={rowRef}
         href={`/${lang}/${post.slug}`}
         className={styles.row}
         data-active={active || undefined}
-        data-peek={peek === 'idle' ? undefined : peek}
         onPointerEnter={onHover && (() => onHover(index))}
       >
         <div>
@@ -155,16 +198,22 @@ function Row({
             </span>
           </h3>
           {post.description && (
-            <div className={styles.slot}>
+            <div ref={slotRef} className={styles.slot}>
               <p ref={descRef} className={styles.rowDesc}>
                 <Words text={post.description} q={q} />
               </p>
               {/* The post's first paragraphs, in the summary's place while the
                   row holds the dot. Same lines, same height. */}
               {post.excerpt && (
-                <p className={styles.rowPeek} aria-hidden>
-                  <Words text={post.excerpt} />
-                </p>
+                <>
+                  <p className={styles.rowPeek} aria-hidden>
+                    <Words text={post.excerpt} />
+                  </p>
+                  {/* The band blurs whatever is behind it; the line is the
+                      boundary itself. Both ride --edge. */}
+                  <span className={styles.blurBand} aria-hidden />
+                  <span className={styles.edge} aria-hidden />
+                </>
               )}
             </div>
           )}
@@ -218,6 +267,9 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
   useEffect(() => {
     if (hoverable !== false) return;
     let frame = 0;
+    // The row the line is over right now, which is not yet the row that turns.
+    let candidate = -1;
+    let settle = 0;
     const place = () => {
       frame = 0;
       const list = listRef.current;
@@ -231,7 +283,13 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
           break;
         }
       }
-      setHover(found);
+      if (found === candidate) return;
+      candidate = found;
+      // The mouse has to rest on a row before it turns; a finger should not be
+      // held to a lesser standard. Rows crossed mid-flick never come up at all,
+      // so the text only changes where the reader actually stopped.
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => setHover(found), SCROLL_INTENT_MS);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(place);
@@ -243,6 +301,7 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       if (frame) cancelAnimationFrame(frame);
+      window.clearTimeout(settle);
     };
   }, [hoverable]);
 
