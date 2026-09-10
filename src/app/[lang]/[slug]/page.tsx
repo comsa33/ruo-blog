@@ -137,7 +137,7 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
           {/* The close, on every post — see .end in post.module.css. */}
           <p className={styles.end}>
             {t.theEnd[lang as Lang]}
-            <span className={styles.endDot} aria-hidden />
+            <span className={styles.endDot} data-dot-end aria-hidden />
           </p>
         </div>
       </article>

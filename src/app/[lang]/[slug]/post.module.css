@@ -250,13 +250,16 @@
   color: var(--ink);
 }
 
+/* The seat the travelling dot comes to rest in. It draws nothing itself — the
+   dot that has been following the reader down the page is the full stop, and
+   arriving here is its last move. Set a little wider than a period sits, since
+   a mark this colour reads as punctuation only with air around it. */
 .endDot {
+  --indicator-size: 5px;
   display: inline-block;
-  width: var(--end-dot, 0.28em);
-  height: var(--end-dot, 0.28em);
-  border-radius: 50%;
-  background: var(--accent);
-  /* A period has no space before it. */
+  width: var(--indicator-size);
+  height: var(--indicator-size);
+  margin-left: 0.24em;
   vertical-align: baseline;
 }
 

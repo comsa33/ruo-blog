@@ -51,11 +51,15 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
     // file does not have to know its class name.
     const home = document.querySelector<HTMLElement>('[data-dot-home]');
 
-    // Discovery: anything that titles a piece of the page is an anchor.
+    // Discovery: anything that titles a piece of the page is an anchor, plus the
+    // seat at the very end — the full stop of the closing word, which is the
+    // last place the dot has to get to.
     const anchors =
       mode === 'scroll'
-        ? Array.from(parent.querySelectorAll<HTMLElement>('h1, h2, h3, figcaption')).filter(
-            (el) => (el.textContent ?? '').trim().length > 0,
+        ? Array.from(
+            parent.querySelectorAll<HTMLElement>('h1, h2, h3, figcaption, [data-dot-end]'),
+          ).filter(
+            (el) => el.hasAttribute('data-dot-end') || (el.textContent ?? '').trim().length > 0,
           )
         : [];
     if (mode === 'scroll') {
@@ -114,6 +118,19 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
     const spotFor = (host: HTMLElement): Spot => {
       const a = host.getBoundingClientRect();
       const p = parent.getBoundingClientRect();
+
+      // The closing mark is not a title with a slot beside it — it is the full
+      // stop of the last word, and the seat is already exactly where the dot
+      // belongs. So it lands on the seat rather than in a margin next to it.
+      if (host.hasAttribute('data-dot-end')) {
+        const s = parseFloat(getComputedStyle(host).getPropertyValue('--indicator-size')) || 5;
+        return {
+          x: Math.round(a.left - p.left + (a.width - s) / 2),
+          y: Math.round(a.top - p.top + (a.height - s) / 2),
+          size: s,
+        };
+      }
+
       const cs = getComputedStyle(host);
       const fontSize = parseFloat(cs.fontSize);
       const lineHeight = parseFloat(cs.lineHeight) || fontSize * 1.4;

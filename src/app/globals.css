@@ -283,7 +283,9 @@ pre {
   transition: padding-left 480ms var(--ease);
 }
 
-[data-dot][data-dot-active] {
+/* A title slides right to open a slot for the dot. The closing mark does not:
+   the dot lands on it, so there is nothing to make room for. */
+[data-dot][data-dot-active]:not([data-dot-end]) {
   padding-left: 1.35em;
 }
 
