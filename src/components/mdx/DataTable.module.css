@@ -1,0 +1,17 @@
+/* A markdown table stays in the reading column and scrolls inside its own box
+   rather than overhanging the prose. The scroll container has to be a separate
+   element: `overflow-x` on the <table> itself needs `display: block`, which
+   stops the table filling the column when its content is narrower. */
+.wrap {
+  overflow-x: auto;
+  margin: 22px 0;
+  /* Keeps the focus ring visible when the box is reachable by keyboard. */
+  scrollbar-width: thin;
+}
+
+.wrap table {
+  width: 100%;
+  /* Below this the columns are squeezed rather than read; the wrapper scrolls
+     instead. Only reached by a table wider than anything in the posts today. */
+  min-width: min(520px, 100%);
+}

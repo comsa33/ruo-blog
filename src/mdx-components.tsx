@@ -1,5 +1,6 @@
 import type { MDXComponents } from 'mdx/types';
 import { CodeBlock } from '@/components/mdx/CodeBlock';
+import { DataTable } from '@/components/mdx/DataTable';
 import { Compare } from '@/components/mdx/Compare';
 import { Term } from '@/components/mdx/Term';
 import { Callout, Metrics, Metric, Figure } from '@/components/mdx/Blocks';
@@ -18,6 +19,7 @@ import { Transform } from '@/components/diagram/Transform';
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
     pre: CodeBlock,
+    table: DataTable,
     // prose furniture
     Compare,
     Term,

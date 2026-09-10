@@ -258,17 +258,16 @@
   transform: none;
 }
 
-/* Tables read as data, so they get a little extra room too — but not the full
-   frame, which would detach them from the sentence that introduces them. */
-.prose table {
-  width: min(calc(var(--prose) + 120px), calc(100vw - 48px));
-  margin-left: 50%;
-  transform: translateX(-50%);
-}
+/* Tables do not bleed. An earlier rule gave them --prose + 120px, which read as
+   a misalignment rather than a deliberate one: three centred widths (prose,
+   table, figure) put three different left edges on the page, and 60px of offset
+   is not enough to look intended. They now sit in the reading column — the same
+   call as the code blocks above, for the same reason. Overflow is handled by
+   the wrapper in components/mdx/DataTable, not here: `overflow-x` on a <table>
+   needs `display: block`, which stops it filling the column. */
 
 @media (max-width: 900px) {
-  .prose figure,
-  .prose table {
+  .prose figure {
     width: 100%;
     margin-left: 0;
     transform: none;
