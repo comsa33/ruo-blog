@@ -73,6 +73,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
     let returning = 0;
     let flying = 0;
     let currentHost: HTMLElement | null = null;
+    let landing = 0;
     let lastX = NaN;
     let lastY = NaN;
 
@@ -163,6 +164,22 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       }, FLIGHT_MS);
     };
 
+    /**
+     * The closing mark is the only host the dot arrives at for good, so it is
+     * the only one worth landing on. The hop waits out the flight, then takes
+     * the ball over from the travel deformation.
+     */
+    const scheduleLand = (host: HTMLElement) => {
+      window.clearTimeout(landing);
+      ball?.removeAttribute('data-land');
+      if (!ball || !host.hasAttribute('data-dot-end')) return;
+      landing = window.setTimeout(() => {
+        ball.removeAttribute('data-squish');
+        void ball.offsetWidth; // let the animation restart
+        ball.setAttribute('data-land', '');
+      }, FLIGHT_MS);
+    };
+
     const settleHome = () => {
       returning = 0;
       atHome = true;
@@ -243,6 +260,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
         currentHost?.removeAttribute('data-dot-active');
         host.setAttribute('data-dot-active', '');
         currentHost = host;
+        scheduleLand(host);
       }
       goTo(spotFor(host));
       ready = true;
@@ -287,6 +305,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       mo?.disconnect();
       if (frame) cancelAnimationFrame(frame);
       if (returning) window.clearTimeout(returning);
+      window.clearTimeout(landing);
       if (flying) window.clearTimeout(flying);
       home?.removeAttribute('data-dot-state');
       anchors.forEach((el) => {

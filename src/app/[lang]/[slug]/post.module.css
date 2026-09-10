@@ -260,7 +260,14 @@
   width: var(--indicator-size);
   height: var(--indicator-size);
   margin-left: 0.24em;
+  /* Sitting the seat on the baseline puts a 5px mark far higher than a period
+     reads. Measured in this face at this size, a period's ink runs from 1.59px
+     above the baseline to 0.22px below it — its centre is 0.69px up, where a
+     baseline-seated 5px dot centres 2.5px up. The drop is that difference, so
+     the mark's centre lands where the period's does. */
   vertical-align: baseline;
+  position: relative;
+  top: var(--end-dot-drop, 0.12em);
 }
 
 .footer {
