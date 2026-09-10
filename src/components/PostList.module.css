@@ -341,17 +341,42 @@
  * band rides the boundary and blurs whatever is behind it. It sits on the
  * dissolving side — ahead of the edge on the way out, behind it on the way
  * back — so one rule covers both directions.
+ *
+ * The falloff is stepped rather than masked. Safari drops backdrop-filter
+ * entirely on an element that also carries a mask-image, which is why the blur
+ * was missing on phones while it worked in desktop Chrome. Four strips with
+ * their own blur values need no mask, and at this radius the steps are not
+ * visible as steps.
  */
 .blurBand {
   position: absolute;
   top: -3px;
   bottom: -3px;
   width: calc(var(--band) * 1%);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
+  display: flex;
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-instant) ease-out;
+}
+
+.blurBand span {
+  flex: 1;
+  backdrop-filter: blur(var(--b, 1px));
+  -webkit-backdrop-filter: blur(var(--b, 1px));
+}
+
+/* Strongest against the edge, gone by the far side of the band. */
+.blurBand span:nth-child(1) {
+  --b: 1px;
+}
+.blurBand span:nth-child(2) {
+  --b: 0.7px;
+}
+.blurBand span:nth-child(3) {
+  --b: 0.4px;
+}
+.blurBand span:nth-child(4) {
+  --b: 0.2px;
 }
 
 .row[data-run] .blurBand {
@@ -360,13 +385,20 @@
 
 .row[data-dir='fwd'] .blurBand {
   left: calc(var(--edge) * 1%);
-  /* Strongest against the edge, gone by the far side of the band. */
-  mask-image: linear-gradient(90deg, #000, transparent);
 }
 
+/* Travelling back, the dissolving side is the other one — the strips keep
+   their order relative to the edge by reversing the row. */
 .row[data-dir='back'] .blurBand {
   left: calc(var(--edge) * 1% - var(--band) * 1%);
-  mask-image: linear-gradient(90deg, transparent, #000);
+  flex-direction: row-reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blurBand span {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 /* The boundary itself, in the accent the reading line already uses. */
@@ -384,13 +416,6 @@
 
 .row[data-run] .edge {
   opacity: 0.9;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .blurBand {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
 }
 
 .meta {

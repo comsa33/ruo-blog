@@ -211,7 +211,12 @@ function Row({
                   </p>
                   {/* The band blurs whatever is behind it; the line is the
                       boundary itself. Both ride --edge. */}
-                  <span className={styles.blurBand} aria-hidden />
+                  <span className={styles.blurBand} aria-hidden>
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </span>
                   <span className={styles.edge} aria-hidden />
                 </>
               )}
