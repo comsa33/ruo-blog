@@ -282,6 +282,10 @@
 .rowPeek {
   font-family: var(--font-serif);
   color: var(--ink);
+  /* The summary and the excerpt trade places inside one box, so they have to
+     land at the same optical size or the swap changes the type as well as the
+     words — and the line count the box was measured for stops holding. */
+  font-size: calc(14px * var(--serif-scale));
 }
 
 .rowPeek {

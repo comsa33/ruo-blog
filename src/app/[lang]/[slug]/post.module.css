@@ -141,6 +141,9 @@
 .prose li,
 .prose blockquote {
   font-family: var(--font-serif);
+  /* Same optical size as the sans it replaced — see --serif-scale. The face
+     changes; the size does not. */
+  font-size: calc(16px * var(--serif-scale));
 }
 
 .prose p {
