@@ -290,7 +290,11 @@
      the mark's centre lands where the period's does. */
   vertical-align: baseline;
   position: relative;
-  top: var(--end-dot-drop, 0.12em);
+  /* Measured on the page rather than from the metrics: the mark reads as a
+     period a little lower than the arithmetic puts it, and the caret that
+     grows off its underside then stands at the height of the line instead of
+     over it. One number sets both, since the caret's foot is the mark. */
+  top: var(--end-dot-drop, 0.18em);
 }
 
 .footer {
