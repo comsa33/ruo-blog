@@ -232,6 +232,34 @@
 
 /* ---------- Footer ---------- */
 
+/*
+ * Every post ends by admitting what is still broken, and then this closes the
+ * page. It is a word, so it says something standing still — nothing here has to
+ * move to be understood.
+ *
+ * The full stop is drawn rather than typed: the accent dot the ruler and the
+ * travelling dot are made of, sitting where a period sits. A real period is
+ * around 2px at this size and the colour would not register, so the mark is set
+ * a little larger — enough to be seen, not so much that it reads as a bullet.
+ */
+.prose > .end {
+  margin-top: 40px;
+  font-family: var(--font-serif);
+  font-size: calc(16px * var(--serif-scale));
+  line-height: 1.85;
+  color: var(--ink);
+}
+
+.endDot {
+  display: inline-block;
+  width: var(--end-dot, 0.28em);
+  height: var(--end-dot, 0.28em);
+  border-radius: 50%;
+  background: var(--accent);
+  /* A period has no space before it. */
+  vertical-align: baseline;
+}
+
 .footer {
   max-width: var(--prose);
   margin: 72px auto 0;

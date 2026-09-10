@@ -26,6 +26,8 @@ export const t = {
   backToTop: { ko: '맨 위로', en: 'Back to top' },
   /* Why a post is offered at the end of another — the label says which rule
      put it there, rather than leaving the reader to guess. */
+  /* The word that closes every post. Its full stop is drawn, not typed. */
+  theEnd: { ko: '끝', en: 'End' },
   readNext: { ko: '이어서', en: 'Read next' },
   sameTopic: { ko: '같은 토픽', en: 'Same topic' },
   olderPost: { ko: '이전 글', en: 'Older' },

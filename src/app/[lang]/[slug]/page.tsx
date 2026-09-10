@@ -134,6 +134,11 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
           style={{ '--i': 1 } as React.CSSProperties}
         >
           <Body />
+          {/* The close, on every post — see .end in post.module.css. */}
+          <p className={styles.end}>
+            {t.theEnd[lang as Lang]}
+            <span className={styles.endDot} aria-hidden />
+          </p>
         </div>
       </article>
 
