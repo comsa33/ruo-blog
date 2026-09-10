@@ -14,12 +14,23 @@ const getServerSnapshot = () => 'light';
 export function ThemeToggle({ label }: { label: string }) {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-
-    // Suppress interaction transitions while the whole document cross-fades,
-    // otherwise every hover-tuned transition fires at once.
     const root = document.documentElement;
+
+    // The new theme spreads from this button (globals.css, themeSpread), so
+    // the transition needs to know where it was pressed and how far the
+    // farthest corner is.
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    root.style.setProperty('--theme-x', `${Math.round(x)}px`);
+    root.style.setProperty('--theme-y', `${Math.round(y)}px`);
+    root.style.setProperty('--theme-r', `${Math.ceil(far)}px`);
+
+    // Suppress interaction transitions while the document switches, otherwise
+    // every hover-tuned transition fires at once.
     root.setAttribute('data-theme-switching', '');
     const commit = () => {
       root.dataset.theme = next;

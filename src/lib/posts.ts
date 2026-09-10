@@ -5,6 +5,18 @@ import { LANGS, type Lang } from './site';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'posts');
 
+/** The explanatory engines (src/components/diagram). Order is irrelevant. */
+export const FIGURES = [
+  'Sequence',
+  'Structure',
+  'Breakdown',
+  'Series',
+  'Transform',
+  'Threshold',
+  'Playground',
+] as const;
+export type FigureKind = (typeof FIGURES)[number];
+
 export type PostMeta = {
   slug: string;
   lang: Lang;
@@ -18,7 +30,19 @@ export type PostMeta = {
   draft: boolean;
   /** Estimated reading time in minutes. */
   readingTime: number;
+  /** The first diagram in the body, or null for a post that has none. */
+  figure: FigureKind | null;
 };
+
+/**
+ * The first explanatory engine in the body. The index previews it on hover,
+ * so a reader sees what kind of figure a post explains itself with. Derived,
+ * never authored — nothing in the frontmatter has to be kept in step.
+ */
+function firstFigure(body: string): FigureKind | null {
+  const m = new RegExp(`^\\s*<(${FIGURES.join('|')})\\b`, 'm').exec(body);
+  return m ? (m[1] as FigureKind) : null;
+}
 
 /**
  * Korean prose is counted by character, English by word. Mixing the two in one
@@ -78,6 +102,7 @@ function readPost(slug: string, lang: Lang): PostMeta | null {
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
     draft: Boolean(data.draft),
     readingTime: readingTime(content, lang),
+    figure: firstFigure(content),
   };
 }
 
@@ -102,7 +127,8 @@ export function getPost(slug: string, lang: Lang): PostMeta | null {
 export function getAllParams(): { lang: Lang; slug: string }[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];
   const params: { lang: Lang; slug: string }[] = [];
-  for (const lang of LANGS) for (const post of getPosts(lang)) params.push({ lang, slug: post.slug });
+  for (const lang of LANGS)
+    for (const post of getPosts(lang)) params.push({ lang, slug: post.slug });
   return params;
 }
 

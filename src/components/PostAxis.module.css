@@ -1,0 +1,81 @@
+/*
+ * Year axis of posts. Same tick vocabulary as the reading ruler: 1px lines,
+ * grey minors, ink majors, the active one in the accent and reaching further.
+ * The axis is 44px tall so a thumb can land on it; horizontal drags scrub it
+ * and vertical ones still scroll the page.
+ */
+.root {
+  padding: 4px 0 0;
+}
+
+.axis {
+  position: relative;
+  height: 44px;
+  border-bottom: 1px solid var(--line);
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+.week {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 6px;
+  background: var(--line-strong);
+}
+
+.month {
+  position: absolute;
+  top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink-tertiary);
+  transform: translateX(3px);
+  white-space: nowrap;
+}
+
+/* Twelve labels do not fit a phone; the quarters do. */
+@media (max-width: 640px) {
+  .month:not([data-quarter]) {
+    display: none;
+  }
+}
+
+.tick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: calc(18px + 12px * var(--near, 0));
+  background: var(--ink);
+  transition:
+    height var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out;
+}
+
+.tick[data-dim] {
+  background: var(--line-strong);
+}
+
+.tick[data-on] {
+  background: var(--accent);
+}
+
+.label {
+  display: block;
+  margin-top: 8px;
+  min-height: 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--ink-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--dur-fast) var(--ease-state);
+}
+
+.label[data-on] {
+  color: var(--ink);
+}

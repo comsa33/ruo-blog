@@ -105,9 +105,17 @@ per-post configuration for them.
 | `<ReadingRuler>` | Left-gutter tick ruler (major = heading, minor = block), a guide line drawn at the active tick, and an action at the line's right end. Ticks respond to pointer distance. Below 1180px the ruler is hidden, the line moves to a fixed 62% of the viewport, and both keep working. |
 | `<TravelingDot>` | One accent dot that moves to the heading or caption the reader is on. Anchors are discovered from `h1/h2/h3/figcaption`, so nothing needs marking up. |
 | `<Views>` | `1,284회 · 오늘 32` in the meta line. Counted once per person per KST day via `/api/views/[slug]`, stored in the Redis named by `KV_REST_API_URL` / `KV_REST_API_TOKEN` (see `.env.example`). With no store configured the clause is simply absent. |
+| `<SiteFooter>` | Sits on the page *behind* the sheet (`sticky; bottom: 0`, sheet `z-index: 1`), so it is revealed as the sheet scrolls off it. Site links, RSS, llms.txt. Rendered once in the `[lang]` layout. |
+| `<PostAxis>` | Index only. One tick per post on a year axis under the hero; pointer proximity grows ticks (the ruler's `--near` rule), the nearest names its post, a click scrolls to the row and sends the dot there. `aria-hidden` — the list is the accessible thing. Below 640px only quarter labels show. |
+| `<FigureSketch>` | Index only. A glyph for each explanatory engine. The index shows the one for `post.figure` (the first diagram in the body, derived in `posts.ts`) above the date on row hover. Hover devices only. |
 
 The index (`<PostList>`) searches title, description, topic and tags — the
 frontmatter, never the body — and a tag on a post page links to `/ko?q=<tag>`.
+Hovering a row (hover devices only) blurs the rest of the list and flies the
+dot to it; Esc on a query lets the letters leave one at a time before the field
+clears. The hero arrives a word at a time (`.rise` per word, `--stagger: 40ms`
+on the hero), and the theme spreads from the toggle as a circle
+(`themeSpread` in `globals.css`, origin written by `ThemeToggle`).
 There is no tag wall and no topic filter; a topic line is only worth adding
 once a second topic exists.
 

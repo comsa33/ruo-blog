@@ -16,6 +16,10 @@
   letter-spacing: -0.4px;
 }
 
+.word {
+  display: inline-block;
+}
+
 .subtitle {
   margin-top: 16px;
   font-size: 16px;

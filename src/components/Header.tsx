@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ThemeToggle } from './ThemeToggle';
-import { site, type Lang } from '@/lib/site';
+import { site, t, type Lang } from '@/lib/site';
 import styles from './Header.module.css';
 
 export function Header({ lang }: { lang: Lang }) {
@@ -33,10 +33,10 @@ export function Header({ lang }: { lang: Lang }) {
 
         <nav className={styles.nav}>
           <a href={site.portfolio} className={styles.navItem}>
-            {lang === 'ko' ? '포트폴리오' : 'Portfolio'}
+            {t.portfolio[lang]}
           </a>
           <a href={site.worldtrip} className={styles.navItem}>
-            {lang === 'ko' ? '세계일주' : 'World Trip'}
+            {t.worldtrip[lang]}
           </a>
           <Link href={otherHref} className={styles.navItem}>
             {other.toUpperCase()}

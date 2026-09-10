@@ -33,6 +33,7 @@
   font-weight: 500;
   margin-right: auto;
   user-select: none;
+  white-space: nowrap;
 }
 
 /* The accent dot is the one piece of colour in the chrome. */
@@ -67,6 +68,7 @@
 
 .navItem {
   padding: 5px 8px;
+  white-space: nowrap;
   border-radius: var(--radius-sm);
   transition:
     color var(--dur-instant) ease-out,
@@ -90,4 +92,15 @@
   height: 14px;
   background: var(--line-strong);
   margin: 0 4px;
+}
+
+/* A phone is 342px wide inside the padding; the English nav only fits if
+   nothing wraps and the items sit a little closer. */
+@media (max-width: 420px) {
+  .nav {
+    font-size: 12.5px;
+  }
+  .navItem {
+    padding: 5px 6px;
+  }
 }

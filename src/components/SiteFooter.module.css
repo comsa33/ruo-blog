@@ -1,0 +1,47 @@
+/*
+ * Sticky to the bottom of the viewport and behind the sheet, so it is only
+ * seen once the sheet has slid up off it. Same width as the sheet, so on a
+ * wide screen nothing shows at its sides before then.
+ */
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 0;
+  width: min(1152px, 100vw);
+  margin: 0 auto;
+  padding: 36px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-tertiary);
+}
+
+.brand {
+  padding: 8px 0;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 4px;
+}
+
+/* Padding, not gap, makes the hit areas — 44px tall on a phone. */
+.links a {
+  padding: 12px 10px;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--dur-instant) ease-out,
+    background-color var(--dur-instant) ease-out;
+}
+
+@media (hover: hover) {
+  .links a:hover {
+    color: var(--ink);
+    background: var(--bg-hover);
+  }
+}

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Header } from '@/components/Header';
+import { SiteFooter } from '@/components/SiteFooter';
 import { LANGS, type Lang } from '@/lib/site';
 
 export function generateStaticParams() {
@@ -16,10 +17,14 @@ export default async function LangLayout({
   const { lang } = await params;
   if (!LANGS.includes(lang as Lang)) notFound();
 
+  // The footer waits on the page behind the sheet; the sheet slides up off it.
   return (
-    <div className="sheet">
-      <Header lang={lang as Lang} />
-      {children}
-    </div>
+    <>
+      <div className="sheet">
+        <Header lang={lang as Lang} />
+        {children}
+      </div>
+      <SiteFooter lang={lang as Lang} />
+    </>
   );
 }

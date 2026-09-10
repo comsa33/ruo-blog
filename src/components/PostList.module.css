@@ -33,9 +33,14 @@
   color: var(--ink-secondary);
 }
 
-.input {
+.field {
   flex: 1;
   min-width: 0;
+  position: relative;
+}
+
+.input {
+  width: 100%;
   padding: 0;
   border: none;
   outline: none;
@@ -48,6 +53,37 @@
 
 .input::placeholder {
   color: var(--ink-tertiary);
+}
+
+/* While the letters leave, the real value is hidden underneath them. */
+.input[data-vanishing] {
+  color: transparent;
+  caret-color: transparent;
+}
+
+.ghost {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  white-space: pre;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.letter {
+  display: inline-block;
+  animation: vanish var(--dur-fast) var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes vanish {
+  to {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(-6px);
+  }
 }
 
 .kbd {
@@ -152,12 +188,25 @@
   margin: 0 -12px;
   border-radius: var(--radius-sm);
   border-bottom: 1px solid var(--line);
-  transition: background-color var(--dur-instant) ease-out;
+  transition:
+    background-color var(--dur-instant) ease-out,
+    opacity var(--dur-instant) ease-out,
+    filter var(--dur-instant) ease-out;
 }
 
 @media (hover: hover) {
   .row:hover {
     background: var(--bg-hover);
+  }
+  /* One row at a time: the rest of the list steps back out of focus. */
+  .list:hover .row:not(:hover) {
+    opacity: 0.42;
+    filter: blur(1.2px);
+  }
+  .row:hover .preview {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
   }
   .row:hover .rowTitle {
     color: var(--accent);
@@ -220,11 +269,56 @@
 }
 
 .meta {
+  position: relative;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--ink-tertiary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The figure preview: a sketch of the post's first diagram, over the date.
+ * Anchored to the date rather than the pointer so nothing else moves, and
+ * only on devices with a hover — there is nothing to anchor a tap to.
+ */
+.preview {
+  display: none;
+}
+
+@media (hover: hover) {
+  .preview {
+    display: block;
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    width: 160px;
+    height: 96px;
+    z-index: 2;
+    color: var(--ink-secondary);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 8%, transparent);
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(6px);
+    transition:
+      opacity var(--dur-fast) var(--ease-state),
+      filter var(--dur-fast) var(--ease-state),
+      transform var(--dur-fast) var(--ease-state);
+    pointer-events: none;
+  }
+}
+
+.previewCap {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  font-size: 9.5px;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
 }
 
 .empty {

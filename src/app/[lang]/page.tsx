@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import { getPosts } from '@/lib/posts';
 import { PostList } from '@/components/PostList';
@@ -53,6 +54,23 @@ function blogSchema(lang: Lang, posts: { slug: string; title: string; date: stri
   };
 }
 
+/**
+ * The hero arrives a word at a time. Each word is its own `.rise`, so the
+ * house entrance runs unchanged, just closer together — the hero sets
+ * `--stagger` for that. Korean breaks at spaces anyway (keep-all), so a word
+ * is a real unit here, and inline-block keeps one from wrapping mid-way.
+ */
+function Words({ text, from }: { text: string; from: number }) {
+  return text.split(' ').map((word, i) => (
+    <Fragment key={i}>
+      {i > 0 && ' '}
+      <span className={`${styles.word} rise`} style={{ '--i': from + i } as React.CSSProperties}>
+        {word}
+      </span>
+    </Fragment>
+  ));
+}
+
 export default async function IndexPage({ params }: { params: Promise<{ lang: Lang }> }) {
   const { lang } = await params;
   const posts = getPosts(lang);
@@ -63,10 +81,12 @@ export default async function IndexPage({ params }: { params: Promise<{ lang: La
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogSchema(lang, posts)) }}
       />
-      <section className={styles.hero}>
-        <h1 className={`${styles.title} rise`}>{site.title[lang]}</h1>
-        <p className={`${styles.subtitle} rise`} style={{ '--i': 1 } as React.CSSProperties}>
-          {site.description[lang]}
+      <section className={styles.hero} style={{ '--stagger': '40ms' } as React.CSSProperties}>
+        <h1 className={styles.title}>
+          <Words text={site.title[lang]} from={0} />
+        </h1>
+        <p className={styles.subtitle}>
+          <Words text={site.description[lang]} from={site.title[lang].split(' ').length} />
         </p>
       </section>
 

@@ -33,6 +33,11 @@ export const t = {
     en: 'Title · summary · topic · tags · ↑↓ move · esc clear',
   },
   views: { ko: '회', en: ' views' },
+  posts: { ko: '편', en: ' posts' },
+  axisHint: { ko: '글 하나가 눈금 하나', en: 'One tick per post' },
+  portfolio: { ko: '포트폴리오', en: 'Portfolio' },
+  worldtrip: { ko: '세계일주', en: 'World Trip' },
+  siteLinks: { ko: '사이트 링크', en: 'Site links' },
   today: { ko: '오늘', en: 'today' },
   viewsBasis: {
     ko: 'KST 기준 · 오늘 00:00부터 · 한 사람 하루 1회',

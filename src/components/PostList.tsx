@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDate } from '@/lib/date';
 import { TravelingDot } from './TravelingDot';
+import { PostAxis } from './PostAxis';
+import { FigureSketch } from './FigureSketch';
 import type { PostMeta } from '@/lib/posts';
 import { t, type Lang } from '@/lib/site';
 import styles from './PostList.module.css';
@@ -40,6 +42,9 @@ function Marked({ text, q }: { text: string; q: string }) {
   );
 }
 
+/** Between one letter leaving and the next. Tight, so a word is gone in ~300ms. */
+const VANISH_STEP_MS = 16;
+
 /** `2026 · 09` — the rail marker. Digits only, so it reads in both languages. */
 function monthOf(date: string) {
   return `${date.slice(0, 4)} · ${date.slice(5, 7)}`;
@@ -50,19 +55,35 @@ function Row({
   lang,
   q,
   active,
+  index,
   i,
   entering,
+  onHover,
 }: {
   post: PostMeta;
   lang: Lang;
   q: string;
   active: boolean;
+  /** Position in the list — what the hover reports. */
+  index: number;
+  /** Entrance order; the rows follow the hero and the axis in. */
   i: number;
   entering: boolean;
+  /** Absent on devices without hover, so a tap never leaves a row "hovered". */
+  onHover?: (i: number) => void;
 }) {
   return (
-    <li className={entering ? 'rise' : undefined} style={{ '--i': i } as React.CSSProperties}>
-      <Link href={`/${lang}/${post.slug}`} className={styles.row} data-active={active || undefined}>
+    <li
+      id={`post-${post.slug}`}
+      className={entering ? 'rise' : undefined}
+      style={{ '--i': i } as React.CSSProperties}
+    >
+      <Link
+        href={`/${lang}/${post.slug}`}
+        className={styles.row}
+        data-active={active || undefined}
+        onPointerEnter={onHover && (() => onHover(index))}
+      >
         <div>
           {post.topic && (
             <span className={styles.rowTopic}>
@@ -82,7 +103,16 @@ function Row({
             </p>
           )}
         </div>
-        <span className={styles.meta}>{formatDate(post.date, lang)}</span>
+        <span className={styles.meta}>
+          {formatDate(post.date, lang)}
+          {/* What kind of figure the post explains itself with; hover only. */}
+          {post.figure && (
+            <span className={styles.preview} aria-hidden>
+              <FigureSketch kind={post.figure} />
+              <span className={styles.previewCap}>{post.figure}</span>
+            </span>
+          )}
+        </span>
       </Link>
     </li>
   );
@@ -96,6 +126,23 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
   // Rows stagger in once, on arrival. Once the reader has touched the list
   // they must not re-enter on every keystroke.
   const [touched, setTouched] = useState(false);
+  // The row under the pointer, and the one the axis was clicked on. Either
+  // takes the dot; the keyboard cursor has it otherwise.
+  const [hover, setHover] = useState(-1);
+  const [pinned, setPinned] = useState(-1);
+  const pinTimer = useRef(0);
+  // Esc does not blank the field — the letters leave one at a time first.
+  const [vanishing, setVanishing] = useState(false);
+  const vanishTimer = useRef(0);
+  // Hover states are only wired on devices that have a hover.
+  const [canHover, setCanHover] = useState(false);
+  useEffect(() => {
+    setCanHover(matchMedia('(hover: hover)').matches);
+    return () => {
+      window.clearTimeout(pinTimer.current);
+      window.clearTimeout(vanishTimer.current);
+    };
+  }, []);
 
   // Arriving with ?q= — from a tag on a post page, or a shared link.
   useEffect(() => {
@@ -135,6 +182,36 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
     [posts, query],
   );
   const active = query && shown.length ? Math.min(sel, shown.length - 1) : -1;
+  // Where the dot goes: the pointer wins, then an axis pick, then the keyboard.
+  const cursor = hover >= 0 ? hover : pinned >= 0 ? pinned : active;
+  const shownSlugs = useMemo(() => new Set(shown.map((p) => p.slug)), [shown]);
+
+  /** From the axis: bring the row into view and send the dot to it. */
+  const pick = (slug: string) => {
+    const i = shown.findIndex((p) => p.slug === slug);
+    if (i < 0) return;
+    document
+      .getElementById(`post-${slug}`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setPinned(i);
+    window.clearTimeout(pinTimer.current);
+    pinTimer.current = window.setTimeout(() => setPinned(-1), 1600);
+  };
+
+  /** Esc with a query: the letters leave in order, then the field is empty. */
+  const vanish = () => {
+    if (vanishing) return;
+    setVanishing(true);
+    const n = Array.from(q).length;
+    vanishTimer.current = window.setTimeout(
+      () => {
+        setQ('');
+        setSel(0);
+        setVanishing(false);
+      },
+      VANISH_STEP_MS * (n - 1) + 200,
+    );
+  };
 
   // Consecutive posts sharing a month share a rail marker. Posts arrive newest
   // first, so grouping in order is grouping by month.
@@ -163,9 +240,8 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
     } else if (e.key === 'Enter' && active >= 0) {
       router.push(`/${lang}/${shown[active].slug}`);
     } else if (e.key === 'Escape') {
-      if (q) setQ('');
+      if (q) vanish();
       else inputRef.current?.blur();
-      setSel(0);
     }
   };
 
@@ -174,7 +250,10 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
   return (
     <div className={styles.root}>
       <TravelingDot mode="cursor" />
-      <div className={`${styles.search} rise`} style={{ '--i': 2 } as React.CSSProperties}>
+      <div className="rise" style={{ '--i': 2 } as React.CSSProperties}>
+        <PostAxis posts={posts} shown={shownSlugs} lang={lang} onPick={pick} />
+      </div>
+      <div className={`${styles.search} rise`} style={{ '--i': 3 } as React.CSSProperties}>
         <svg
           className={styles.glyph}
           width="16"
@@ -189,22 +268,40 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.5 10.5 14 14" />
         </svg>
-        <input
-          ref={inputRef}
-          className={styles.input}
-          type="text"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setSel(0);
-            setTouched(true);
-          }}
-          onKeyDown={onKeyDown}
-          placeholder={t.search[lang]}
-          aria-label={t.search[lang]}
-          autoComplete="off"
-          spellCheck={false}
-        />
+        <span className={styles.field}>
+          <input
+            ref={inputRef}
+            className={styles.input}
+            type="text"
+            value={q}
+            data-vanishing={vanishing || undefined}
+            onChange={(e) => {
+              if (vanishing) return;
+              setQ(e.target.value);
+              setSel(0);
+              setTouched(true);
+            }}
+            onKeyDown={onKeyDown}
+            placeholder={t.search[lang]}
+            aria-label={t.search[lang]}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {/* The letters, laid over the (now invisible) input, leaving in order. */}
+          {vanishing && (
+            <span className={styles.ghost} aria-hidden>
+              {Array.from(q).map((c, i) => (
+                <span
+                  key={i}
+                  className={styles.letter}
+                  style={{ '--d': `${i * VANISH_STEP_MS}ms` } as React.CSSProperties}
+                >
+                  {c === ' ' ? '\u00A0' : c}
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
         {query ? (
           <span className={styles.count} aria-live="polite">
             {shown.length}
@@ -218,7 +315,7 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
       {query && <p className={styles.scope}>{t.searchScope[lang]}</p>}
 
       {shown.length ? (
-        <ul className={styles.list}>
+        <ul className={styles.list} onPointerLeave={canHover ? () => setHover(-1) : undefined}>
           {groups.map((g) => (
             <li key={g.month} className={styles.group}>
               <span className={styles.rail} aria-hidden>
@@ -233,9 +330,11 @@ export function PostList({ posts, lang }: { posts: PostMeta[]; lang: Lang }) {
                       post={post}
                       lang={lang}
                       q={query}
-                      active={i === active}
-                      i={i + 3}
+                      active={i === cursor}
+                      index={i}
+                      i={i + 4}
                       entering={!touched}
+                      onHover={canHover ? setHover : undefined}
                     />
                   );
                 })}
