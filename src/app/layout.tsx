@@ -49,13 +49,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
-        {/* Serif, for the excerpt in the index list and nowhere else. Google
-            serves it as unicode-range subsets, so a row pulls only the slices
-            its own characters need. */}
+        {/* Serif, for the prose of an article and the index list's excerpt.
+            Weight 500 is all the emphasis needs — .prose strong carries it
+            with an underline rather than by getting heavier — so no 700 is
+            fetched. Google serves the face as unicode-range subsets, so a page
+            pulls only the slices its own characters need. */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500&display=swap"
         />
       </head>
       <body>{children}</body>

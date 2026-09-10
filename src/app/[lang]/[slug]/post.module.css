@@ -129,6 +129,20 @@
   font-weight: 500;
 }
 
+/*
+ * The article's prose is set in the serif. Everything structural stays in the
+ * sans — headings, captions, table cells, the diagram kit, every piece of
+ * chrome — so the hierarchy still reads at a glance and only the running text
+ * changes voice. It is the same face the index list gives an excerpt, which is
+ * what makes that excerpt legible as a piece of the article rather than as
+ * another line written about it.
+ */
+.prose p,
+.prose li,
+.prose blockquote {
+  font-family: var(--font-serif);
+}
+
 .prose p {
   color: var(--ink);
 }
