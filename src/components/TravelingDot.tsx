@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { readingLineY } from '@/lib/reading-line';
 import styles from './TravelingDot.module.css';
 
 /** Width of the slot a heading opens for the dot. Mirrors globals.css. */
@@ -17,6 +18,9 @@ const FLIGHT_MS = 600;
 
 /** A move shorter than this is a nudge, not a journey — no deformation. */
 const JOURNEY_PX = 6;
+
+/** Where in the viewport an anchor counts as "being read". */
+const READ_AT = 0.44;
 
 type Mode = 'scroll' | 'cursor';
 
@@ -286,7 +290,7 @@ export function TravelingDot({ mode = 'scroll' }: { mode?: Mode }) {
       }
 
       // The anchor the reader is on is the last one above the reading line.
-      const lineY = window.innerHeight * 0.44;
+      const lineY = readingLineY(READ_AT);
       let host = anchors[0];
       for (const el of anchors) {
         if (el.getBoundingClientRect().top <= lineY) host = el;

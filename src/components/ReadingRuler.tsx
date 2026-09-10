@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { readingLineY } from '@/lib/reading-line';
 import styles from './ReadingRuler.module.css';
 
 type Tick = {
@@ -71,7 +72,7 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
       const ruler = rulerRef.current;
       if (!list.length || !ruler) return;
 
-      const readY = window.scrollY + window.innerHeight * READ_AT;
+      const readY = window.scrollY + readingLineY(READ_AT);
       let idx = 0;
       for (let i = 0; i < list.length; i++) {
         if (list[i].top <= readY) idx = i;
