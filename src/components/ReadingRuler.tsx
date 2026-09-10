@@ -88,10 +88,15 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
       // so it cannot answer this question — it silently reported the ruler as
       // hidden at every width and pinned the line to the fallback height.
       const visible = getComputedStyle(ruler).display !== 'none';
+      // Measure the bar, not the row that holds it. The row carries the tick's
+      // hit area and is several pixels tall with the 1px bar centred in it, so
+      // anchoring to the row's top draws the line above the bar it is supposed
+      // to meet. Taking the bar's own centre survives any change to that
+      // padding — which is what went wrong when the hit area was introduced.
+      const bar = (row?.firstElementChild as HTMLElement | null) ?? row ?? null;
+      const rect = bar?.getBoundingClientRect();
       const y =
-        visible && row
-          ? row.getBoundingClientRect().top + 0.5
-          : window.innerHeight * FIXED_LINE;
+        visible && rect ? rect.top + rect.height / 2 : window.innerHeight * FIXED_LINE;
       rootRef.current?.style.setProperty('--line-y', `${Math.round(y)}px`);
 
       // Once the last section is reached the action turns into "back to top".
