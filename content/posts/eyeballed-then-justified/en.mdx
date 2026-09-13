@@ -1,0 +1,106 @@
+---
+title: 'I eyeballed it, then found a reason'
+description: 'In Brazil I could not tell where I was. I added a second map, and reached for numbers twice.'
+topic: 'Map interfaces'
+date: 2026-09-13
+tags: ['design decisions', 'measurement', 'minimap']
+draft: false
+---
+
+import { ratios, insetShapes } from '@/data/countryInset';
+
+My round-the-world site keeps a small globe in the bottom right corner. It tells you where in the world the city you are looking at sits.
+
+In Brazil it was useless.
+
+When you look at a city the camera comes in close. At that height the screen holds 528×330km. Brazil is about twenty times that. But Brazil on the globe is a thumbnail, and my position is a dot inside it. **I could tell where in the world, but not where in Brazil.**
+
+So I put a second, smaller map beside it — one that draws a single country.
+
+## When should it appear
+
+My first thought was "only for big countries". The camera code already had such a list: countries where the journey covered more than 1,000km — India, Brazil, Chile, Peru, Colombia, Argentina, Bolivia.
+
+I did not borrow it. Vietnam does not fit on screen either, nor does Italy, and neither is on that list. The problem was not that a country is big. It was that **the screen is small**.
+
+So the condition became a calculation instead of a list. Work out the real distance the screen covers at the current zoom, and compare it against the distance from where you stand to the border.
+
+```js
+need = max((reach.w * 2) / view.w, (reach.h * 2) / view.h);
+show = need > 1; // 1/1.05 once shown — so it does not flicker at the edge
+```
+
+The point is that it measures from **where you are standing**, not from the middle of the country. The camera puts that city in the centre of the screen.
+
+## Measured, and there was one exception
+
+The journey has 155 stops across 31 countries. I ran all of them.
+
+<Spread
+  caption="155 stops · how many times bigger the country is than the screen"
+  values={ratios}
+  cuts={[1, 1.22, 1.3, 2]}
+  chosen={1}
+  belowLabel="inset hidden"
+  aboveLabel="inset shown"
+  ticks={[1, 2, 5, 10, 20]}
+  unit="×"
+/>
+
+In 154 of them the country was bigger than the screen. The one that was not is Brussels, at 0.94.
+
+And **the second smallest value is 1.22 (Budapest)**. Nothing sits between 0.94 and 1.22, so there was no decision to make about whether the threshold belongs at 1.0 or 1.1. Move the line in the figure above and only Brussels changes sides. I did not choose the number. There was nothing to choose.
+
+I should not oversell it. That empty stretch is 1.2% of the full range, and pushing the line to 1.3 drags Prague and Abu Dhabi out with it — five stops instead of one.
+
+154 out of 155 is effectively "always". I kept the calculation anyway. The rule explains itself, and if the camera's zoom rules change later the condition follows along. Brussels is the proof that the rule is still doing something.
+
+## 104px was a guess
+
+On a phone the inset is a 104px square.
+
+I can justify it. The existing globe is 140×70 on a phone, so 9,800 square px; a 104 square is 10,816. Close enough. The two maps in opposite corners then carry the same weight.
+
+**That is backwards.** I picked 104 by eye. I noticed the areas were similar afterwards, and only then started calling it a reason.
+
+If area had really been the reason, the answer would have been **99**, not 104. That is 9,801.
+
+In the section above, a number removed a judgement call. Here, a number hid one.
+
+## At that size you get the shape, not the route
+
+At 104px the country's shape reads. The route does not.
+
+<Legibility
+  caption="one country at rest, 104px, and open, 358px"
+  shapes={insetShapes}
+  sizes={{ rest: 104, open: 358 }}
+  restLabel="rest"
+  openLabel="open"
+  readableAt={40}
+  note="Each outline drops vertices closer together than 0.9px at that display size, so the two panels really do carry different detail. The route figure is the long side of the bounding box around the stops. The 40px line is mine, not a measurement."
+/>
+
+Brazil 26.6px, Chile 26.2px, Italy 19.3px. A smudge that size cannot tell you where you went or in what order. So the route is something you open for: at 358px Brazil's route becomes 91.6px.
+
+There is an exception here too. Press India and the same 104px gives a 55.5px route. Peru 58.3, Colombia 55.9. Those read fine at rest. **It is countries whose stops cluster in one corner that fail**, not small maps in general.
+
+## What changed once it shipped
+
+**The viewport rectangle came out, then went back in.** It is the box drawn inside the inset showing how much the screen currently covers. I wrote "it is only 4px across, drop it" during the design. That calculation was wrong: I compared the mockup globe's **height** against the country's **width**, and put a radius where a diameter belonged. It is really 22×12px at 200px. Small, but plainly visible. One bad number nearly deleted a working feature.
+
+**"Empty the globe's orange dot while the inset is up" was scrapped.** It read well on paper. On screen, removing the dot left a background-coloured hole, which looked like a white dot in the light theme. Someone asked why a white dot had appeared, and I put it back.
+
+**Pointing became relative instead of absolute.** Touching the map used to teleport the marker somewhere unrelated — on the globe it once jumped three months. Now the point you touch is treated as where you are, and you walk left and right from there. It was not in the design at all, and both maps changed.
+
+The ISO country label went too. Size it to be legible at 104px and it becomes a signboard when the map opens to 420.
+
+## What is still not done
+
+**I have not seen it on a phone.** 104 and 358 both come from calculations and mockups. It is deployed, but I have not held it in my hand. There is no size slider either, so what is live is exactly the design value.
+
+**Which way your hand walks is undecided.** Reading horizontal position as distance along the route covers every leg of the journey. But where the path doubles back, your hand keeps going right while the marker moves left across the map. That is 29 of 124 legs inside countries. Italy is the worst: four visits to Turin, spreading in every direction, so a single push of the hand sends the marker from Genoa to Bra to Turin to Cinque Terre.
+
+The alternative is to take the nearest point on the route to your hand. The direction is then always right, but sweeping across one height skips whole stretches that sit above or below it. You cannot have both. For now I kept full coverage, and if it grates I will change both maps together — changing one would just be a new inconsistency.
+
+**Brussels still gets nothing.** That is the rule working. Whether "your country fits on screen, so you don't need this" is a satisfying thing to tell someone standing in Brussels, I am less sure. It is one stop out of 155, so it waits.

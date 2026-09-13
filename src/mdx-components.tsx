@@ -11,6 +11,8 @@ import { Playground } from '@/components/diagram/Playground';
 import { Series } from '@/components/diagram/Series';
 import { Threshold } from '@/components/diagram/Threshold';
 import { Transform } from '@/components/diagram/Transform';
+import { Spread } from '@/components/diagram/Spread';
+import { Legibility } from '@/components/diagram/Legibility';
 
 /**
  * The kit available inside every post. Adding here is how the blog grows new
@@ -35,6 +37,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Series,
     Threshold,
     Transform,
+    Spread,
+    Legibility,
     ...components,
   };
 }
