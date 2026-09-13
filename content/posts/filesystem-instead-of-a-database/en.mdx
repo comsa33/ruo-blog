@@ -24,11 +24,47 @@ To understand the failures you have to see how many places a file passes through
 <Structure
   hint="Hover a node to keep only what it connects to"
   nodes={[
-    { id: 'image', label: 'Container image', sub: '/app', col: 0, row: 0, note: 'The shared utility package lives here. Fixed at build time.' },
-    { id: 'pvc', label: 'Shared volume', sub: 'PVC', col: 1, row: 0, note: 'Where user code actually lands. Several pods see the same volume. And this volume covers the same path in the image.' },
-    { id: 'path', label: 'sys.path', sub: 'search path', col: 2, row: 0, note: 'A file can exist and still fail to import if its directory is not in this list. Managed per process.' },
-    { id: 'mods', label: 'sys.modules', sub: 'loaded objects', col: 3, row: 0, accent: true, note: 'Executed module objects stay here. Process-global; delete a key and the next import builds a new object. Most of the incidents in this post happened here.' },
-    { id: 'app', label: 'Sub-app routes', sub: 'FastAPI', col: 3, row: 1, note: 'The router pulled out of the module and mounted. What the user actually calls.' },
+    {
+      id: 'image',
+      label: 'Container image',
+      sub: '/app',
+      col: 0,
+      row: 0,
+      note: 'The shared utility package lives here. Fixed at build time.',
+    },
+    {
+      id: 'pvc',
+      label: 'Shared volume',
+      sub: 'PVC',
+      col: 1,
+      row: 0,
+      note: 'Where user code actually lands. Several pods see the same volume. And this volume covers the same path in the image.',
+    },
+    {
+      id: 'path',
+      label: 'sys.path',
+      sub: 'search path',
+      col: 2,
+      row: 0,
+      note: 'A file can exist and still fail to import if its directory is not in this list. Managed per process.',
+    },
+    {
+      id: 'mods',
+      label: 'sys.modules',
+      sub: 'loaded objects',
+      col: 3,
+      row: 0,
+      accent: true,
+      note: 'Executed module objects stay here. Process-global; delete a key and the next import builds a new object. Most of the incidents in this post happened here.',
+    },
+    {
+      id: 'app',
+      label: 'Sub-app routes',
+      sub: 'FastAPI',
+      col: 3,
+      row: 1,
+      note: 'The router pulled out of the module and mounted. What the user actually calls.',
+    },
   ]}
   edges={[
     { from: 'image', to: 'pvc', label: 'covers', dashed: true },
@@ -60,7 +96,10 @@ The cause was `sys.path`. Only the watched parent directory was added to the sea
 The fix is three lines. Add the module's own directory to the search path too.
 
 <Callout label="The nature of this bug">
-**"It works while running" is the worst possible symptom.** The server is always up at the moment a developer checks. You deploy, you test, you report success, and that night the pod restarts and it breaks. When the moment of verification and the moment of destruction are different, no amount of diligence catches it.
+  **"It works while running" is the worst possible symptom.** The server is always up at the moment
+  a developer checks. You deploy, you test, you report success, and that night the pod restarts and
+  it breaks. When the moment of verification and the moment of destruction are different, no amount
+  of diligence catches it.
 </Callout>
 
 ## Registration order splits a singleton in two
@@ -80,10 +119,31 @@ The intent was to make file edits take effect. But deleting a name from `sys.mod
   caption="Registering in the order A → C → B"
   actors={['Registrar', 'sys.modules', 'Module A', 'Module B']}
   steps={[
-    { from: 'Registrar', to: 'Module A', label: 'register A', note: 'A imports C. C loads for the first time and one singleton instance is created. A references it.' },
-    { from: 'Registrar', to: 'sys.modules', label: 'register C — del sys.modules["C"]', note: "Now it is C's own turn. Per the rule, the existing entry is dropped and re-read. A second instance is born here." },
-    { from: 'Registrar', to: 'Module B', label: 'register B', note: 'B imports C and receives the newly created second instance.' },
-    { from: 'Module A', to: 'Module B', label: 'not the same singleton', async: true, note: 'A and B now hold different Cs. Caches, connections and accumulated state all fork in two. Nothing raises.' },
+    {
+      from: 'Registrar',
+      to: 'Module A',
+      label: 'register A',
+      note: 'A imports C. C loads for the first time and one singleton instance is created. A references it.',
+    },
+    {
+      from: 'Registrar',
+      to: 'sys.modules',
+      label: 'register C — del sys.modules["C"]',
+      note: "Now it is C's own turn. Per the rule, the existing entry is dropped and re-read. A second instance is born here.",
+    },
+    {
+      from: 'Registrar',
+      to: 'Module B',
+      label: 'register B',
+      note: 'B imports C and receives the newly created second instance.',
+    },
+    {
+      from: 'Module A',
+      to: 'Module B',
+      label: 'not the same singleton',
+      async: true,
+      note: 'A and B now hold different Cs. Caches, connections and accumulated state all fork in two. Nothing raises.',
+    },
   ]}
 />
 
@@ -133,9 +193,13 @@ Rather than stop there, I measured it. To check whether the ordering problem was
       key: 'from-dep-first',
       label: 'from-import · dependent executed first',
       output: [
-        { attr: 'exec bbb → exec aaa', text: "ImportError: cannot import name 'example_var' from 'aaa'" },
+        {
+          attr: 'exec bbb → exec aaa',
+          text: "ImportError: cannot import name 'example_var' from 'aaa'",
+        },
       ],
-      verdict: 'aaa is in sys.modules but its body has not run, so it is empty. The name resolved; the attribute is missing.',
+      verdict:
+        'aaa is in sys.modules but its body has not run, so it is empty. The name resolved; the attribute is missing.',
       bad: true,
     },
     {
@@ -148,7 +212,8 @@ Rather than stop there, I measured it. To check whether the ordering problem was
       key: 'import-form',
       label: 'import statement + attribute access inside a function',
       output: [{ attr: 'exec bbb → exec aaa', text: 'fine · returns 1 when called' }],
-      verdict: 'Attribute access is deferred to call time, by which point both modules have executed. Order stops mattering.',
+      verdict:
+        'Attribute access is deferred to call time, by which point both modules have executed. Order stops mattering.',
     },
   ]}
 />

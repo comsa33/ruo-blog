@@ -22,11 +22,37 @@ The vector store's connection pool had **no check before handing a connection ou
   caption="How the first request of the morning fails"
   actors={['Agent', 'Memory service', 'Connection pool', 'Database']}
   steps={[
-    { from: 'Agent', to: 'Memory service', label: 'give me preferences', note: 'First turn of the morning. Nothing has touched this path since last night.' },
-    { from: 'Memory service', to: 'Connection pool', label: 'borrow', note: 'The pool hands over a connection it opened last night. It does not check whether it is alive.' },
-    { from: 'Connection pool', to: 'Database', label: 'query', async: true, note: 'The server closed this connection hours ago. Only the pool was unaware.' },
-    { from: 'Database', to: 'Memory service', label: 'connection is lost', note: 'An exception is raised here. The problem is what happens next.' },
-    { from: 'Memory service', to: 'Agent', label: 'empty list · 200', note: 'The rule was that failing to load memories must never block the conversation. So the failure is swallowed and an empty result returned. The user gets a 200, and the agent answers without knowing who it is talking to.' },
+    {
+      from: 'Agent',
+      to: 'Memory service',
+      label: 'give me preferences',
+      note: 'First turn of the morning. Nothing has touched this path since last night.',
+    },
+    {
+      from: 'Memory service',
+      to: 'Connection pool',
+      label: 'borrow',
+      note: 'The pool hands over a connection it opened last night. It does not check whether it is alive.',
+    },
+    {
+      from: 'Connection pool',
+      to: 'Database',
+      label: 'query',
+      async: true,
+      note: 'The server closed this connection hours ago. Only the pool was unaware.',
+    },
+    {
+      from: 'Database',
+      to: 'Memory service',
+      label: 'connection is lost',
+      note: 'An exception is raised here. The problem is what happens next.',
+    },
+    {
+      from: 'Memory service',
+      to: 'Agent',
+      label: 'empty list · 200',
+      note: 'The rule was that failing to load memories must never block the conversation. So the failure is swallowed and an empty result returned. The user gets a 200, and the agent answers without knowing who it is talking to.',
+    },
   ]}
 />
 
@@ -54,7 +80,8 @@ To exclude the current conversation from search results I added a `$not` conditi
       key: 'null',
       label: 'Model-written memory (no run_id)',
       output: [{ attr: 'run_id = NULL', text: 'NOT (NULL) → NULL · dropped' }],
-      verdict: "SQL's three-valued logic. NULL is neither true nor false, so it cannot pass the condition. Excluded without being an exclusion target.",
+      verdict:
+        "SQL's three-valued logic. NULL is neither true nor false, so it cannot pass the condition. Excluded without being an exclusion target.",
       bad: true,
     },
   ]}
@@ -71,7 +98,9 @@ Memories carry dates. Storing "half day off next Tuesday" requires a reference d
 The vendored code computed that reference in UTC.
 
 <Callout label="00:00 – 08:59 Korean time" accent>
-In this window the conversation is still **the previous day** in UTC. So "tomorrow" resolves to today and "yesterday" to the day before, and that resolution is **stored permanently.** A user says "the meeting tomorrow" at half past midnight, and the memory records a meeting today.
+  In this window the conversation is still **the previous day** in UTC. So "tomorrow" resolves to
+  today and "yesterday" to the day before, and that resolution is **stored permanently.** A user
+  says "the meeting tomorrow" at half past midnight, and the memory records a meeting today.
 </Callout>
 
 Someone suggested setting the pod timezone to `Asia/Seoul`. We did not. **Having to verify that setting on every deploy is itself the failure mode.** Miss it once, anywhere, and the same bug comes back silently.
@@ -83,9 +112,18 @@ The reference date is pinned to UTC+9 in code instead. Korea has had no daylight
 Three more of the same character. All caught before deployment.
 
 <Metrics>
-  <Metric value="full scan" label="scope queries never used an index. The filter key was bound as a parameter, so it could not match an expression index" />
-  <Metric value="TEXT" label="ledger timestamps were strings. The moment offsets mix, lexical order stops matching chronological order" />
-  <Metric value="no ORDER BY" label="LIMIT without a sort. The same query returns a different page every time" />
+  <Metric
+    value="full scan"
+    label="scope queries never used an index. The filter key was bound as a parameter, so it could not match an expression index"
+  />
+  <Metric
+    value="TEXT"
+    label="ledger timestamps were strings. The moment offsets mix, lexical order stops matching chronological order"
+  />
+  <Metric
+    value="no ORDER BY"
+    label="LIMIT without a sort. The same query returns a different page every time"
+  />
 </Metrics>
 
 The third is the nastiest. Paging through, some items appear twice and others never appear at all — and **querying once looks completely fine.**

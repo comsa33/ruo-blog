@@ -20,7 +20,7 @@ This app runs on serverless functions. Their timezone is UTC. The database store
 The problem appears when the code asks what "today" is.
 
 ```js
-new Date().setHours(0, 0, 0, 0)
+new Date().setHours(0, 0, 0, 0);
 ```
 
 That line means local midnight, and the server's local is UTC. For a Korean user this value is **09:00 KST**.
@@ -47,7 +47,10 @@ In one sentence: from midnight to nine in the morning, credits were infinite.
 <Metrics>
   <Metric value="15" label="users who refilled past the legitimate daily cap" />
   <Metric value="195" label="excess refills that resulted, worth roughly $0.65" />
-  <Metric value="69%" label="share of night-time activity among those users. For everyone else it was 17%" />
+  <Metric
+    value="69%"
+    label="share of night-time activity among those users. For everyone else it was 17%"
+  />
 </Metrics>
 
 The last number is what confirms the cause. The people who got extra credits were **the people who use the app at night.** Only those active while the bug's window was open received the benefit. The amount is small, but this is a defect in the billing system, and it scales with the number of users.
@@ -56,13 +59,13 @@ The last number is what confirms the cause. The people who got extra credits wer
 
 The other five share the root and resemble each other not at all.
 
-| Feature | What the user saw | Where it slipped |
-|---|---|---|
-| Weekly ranking | Monday 00:00–09:00 study counted toward last week, and last week's standings stayed on screen | `getDay()` set the week start, which is really 09:00 KST Monday |
-| Review cards | Cards appeared only at 09:00 on the due date; morning learners saw nothing | `nextReviewAt` stored at UTC midnight, compared as an absolute instant |
-| Referral monthly cap | The month changed but the cap held until 09:00 on the 1st | Month boundary computed in UTC |
-| Admin date filter | List totals disagreed with dashboard totals | The filter saw a UTC day, the dashboard a KST day |
-| Announcements | Visible only from 09:00 on the start date | The admin's input was parsed as UTC by the server |
+| Feature              | What the user saw                                                                             | Where it slipped                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Weekly ranking       | Monday 00:00–09:00 study counted toward last week, and last week's standings stayed on screen | `getDay()` set the week start, which is really 09:00 KST Monday        |
+| Review cards         | Cards appeared only at 09:00 on the due date; morning learners saw nothing                    | `nextReviewAt` stored at UTC midnight, compared as an absolute instant |
+| Referral monthly cap | The month changed but the cap held until 09:00 on the 1st                                     | Month boundary computed in UTC                                         |
+| Admin date filter    | List totals disagreed with dashboard totals                                                   | The filter saw a UTC day, the dashboard a KST day                      |
+| Announcements        | Visible only from 09:00 on the start date                                                     | The admin's input was parsed as UTC by the server                      |
 
 The filter and the announcements are the cruel ones. Both had **already been half fixed to KST.** The dashboard looked at KST while the list filter looked at UTC, so two numbers on one screen disagreed. Fixing half is worse than fixing none.
 
@@ -73,7 +76,9 @@ The timezone helpers were collected into one file and the boundary functions wer
 **Storage stayed UTC.** Only boundary computation changed. No schema change.
 
 <Callout label="Why a fixed offset is enough" accent>
-Korea has had no daylight saving since 1988. KST boundaries can therefore be derived exactly with UTC+9 arithmetic, with no timezone database and no library. **A constant that does not depend on configuration beats correctness that does.**
+  Korea has had no daylight saving since 1988. KST boundaries can therefore be derived exactly with
+  UTC+9 arithmetic, with no timezone database and no library. **A constant that does not depend on
+  configuration beats correctness that does.**
 </Callout>
 
 There was a one-time effect. Moving the week start nine hours earlier pulls Sunday-night activity into the current week. That favours users, so it stayed. Stored review dates were not backfilled; the next review overwrites them, and until then a card appears at most nine hours late.

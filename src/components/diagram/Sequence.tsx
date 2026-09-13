@@ -40,7 +40,10 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
   const [playing, setPlaying] = useState(autoPlay);
 
   const lane = (W - PAD * 2) / actors.length;
-  const x = useCallback((name: string) => PAD + (actors.indexOf(name) + 0.5) * lane, [actors, lane]);
+  const x = useCallback(
+    (name: string) => PAD + (actors.indexOf(name) + 0.5) * lane,
+    [actors, lane],
+  );
   const height = TOP + steps.length * GAP + 18;
 
   const geometry = useMemo(
@@ -88,8 +91,12 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
   return (
     <figure className={styles.wrap}>
       <div className={styles.stage}>
-        <svg className={styles.svg} viewBox={`0 0 ${W} ${height}`} role="img"
-          aria-label={caption ?? 'Sequence diagram'}>
+        <svg
+          className={styles.svg}
+          viewBox={`0 0 ${W} ${height}`}
+          role="img"
+          aria-label={caption ?? 'Sequence diagram'}
+        >
           {/* actors + lifelines */}
           {actors.map((a) => {
             const cx = x(a);
@@ -105,8 +112,12 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
                   height={HEAD_H}
                   rx={6}
                 />
-                <text className={styles.actorLabel} x={cx} y={4 + HEAD_H / 2 + 4}
-                  textAnchor="middle">
+                <text
+                  className={styles.actorLabel}
+                  x={cx}
+                  y={4 + HEAD_H / 2 + 4}
+                  textAnchor="middle"
+                >
                   {a}
                 </text>
                 <line className={styles.lifeline} x1={cx} y1={HEAD_H + 6} x2={cx} y2={height - 8} />
@@ -161,8 +172,12 @@ export function Sequence({ actors, steps, caption, autoPlay = false }: Props) {
       </div>
 
       <div className={styles.bar}>
-        <button className={styles.btn} onClick={() => go(current - 1)} disabled={current === 0}
-          aria-label="Previous step">
+        <button
+          className={styles.btn}
+          onClick={() => go(current - 1)}
+          disabled={current === 0}
+          aria-label="Previous step"
+        >
           ←
         </button>
         <button

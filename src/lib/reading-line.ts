@@ -16,7 +16,6 @@
  */
 export function readingLineY(fraction: number) {
   const base = window.innerHeight * fraction;
-  const remaining =
-    document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+  const remaining = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
   return base + Math.max(0, base - remaining);
 }

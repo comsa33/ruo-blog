@@ -17,11 +17,11 @@ Provider SSE payloads differ from each other. Field names differ, nesting depth 
 
 Between 10:17 on 4 August 2025 and 10:01 the following morning, the code in one place changed five times.
 
-| Time | What happened |
-|---|---|
-| 8/4 15:20 | Drop line-based reading; reassemble events from bytes with a buffer |
-| 8/4 15:37 | Remove the buffer. Pass chunks straight through |
-| 8/4 17:21 | Restore the buffer and introduce an SSE event regex |
+| Time      | What happened                                                               |
+| --------- | --------------------------------------------------------------------------- |
+| 8/4 15:20 | Drop line-based reading; reassemble events from bytes with a buffer         |
+| 8/4 15:37 | Remove the buffer. Pass chunks straight through                             |
+| 8/4 17:21 | Restore the buffer and introduce an SSE event regex                         |
 | 8/5 10:01 | Remove the regex. Split on `"\n\n"`, forward only frames containing `data:` |
 
 Two mechanisms were added and then taken back out. The buffer lasted seventeen minutes; the regex lasted until the next morning.
@@ -42,7 +42,8 @@ Every commit message says "improved". None says what broke or how. So I lifted e
         { attr: 'second', text: "'ta: b\\n\\nda'" },
         { attr: 'third', text: "'ta: c\\n\\n'" },
       ],
-      verdict: 'The separator "\\n\\n" is two characters; the cut was taken four characters in. Every event eats the first two characters of the next one. Everything after the first is corrupted.',
+      verdict:
+        'The separator "\\n\\n" is two characters; the cut was taken four characters in. Every event eats the first two characters of the next one. Everything after the first is corrupted.',
       bad: true,
     },
     {
@@ -59,7 +60,8 @@ Every commit message says "improved". None says what broke or how. So I lifted e
         { attr: ': keep-alive', text: 'never forwarded' },
         { attr: 'left in buffer', text: "'\\n'" },
       ],
-      verdict: 'The regex only accepts lines beginning with id, event, data or retry. A comment frame starting with a colon is valid SSE but never matches, so it disappears silently. Heartbeats are exactly that.',
+      verdict:
+        'The regex only accepts lines beginning with id, event, data or retry. A comment frame starting with a colon is valid SSE but never matches, so it disappears silently. Heartbeats are exactly that.',
       bad: true,
     },
     {
@@ -69,7 +71,8 @@ Every commit message says "improved". None says what broke or how. So I lifted e
         { attr: 'data: b', text: 'forwarded' },
         { attr: 'event: status / id: 7', text: 'dropped' },
       ],
-      verdict: 'Any frame without the string data: is discarded. Frames carrying only a status notice or an identifier never reach the client.',
+      verdict:
+        'Any frame without the string data: is discarded. Frames carrying only a status notice or an identifier never reach the client.',
       bad: true,
     },
   ]}
@@ -86,7 +89,9 @@ The answer is in today's code. The final implementation pulls each event apart, 
 So **raw passthrough loses nothing precisely because it changes nothing.** But the reason this system exists was to make differently-shaped providers look the same. Forwarding untouched and normalising the shape cannot both hold.
 
 <Callout label="What the seventeen-minute version showed" accent>
-That version was not a wrong choice. It was **a different product.** Keeping it would have made us a transparent proxy and pushed the job of absorbing provider differences onto every client. What cannot be undone is not the code — it is that promise.
+  That version was not a wrong choice. It was **a different product.** Keeping it would have made us
+  a transparent proxy and pushed the job of absorbing provider differences onto every client. What
+  cannot be undone is not the code — it is that promise.
 </Callout>
 
 ## Why ten lines are not ten lines
@@ -96,10 +101,39 @@ To understand why this code was touched five times in a day you have to see wher
 <Structure
   hint="Hover a node to keep only what it connects to"
   nodes={[
-    { id: 'tpl', label: 'Generation template', sub: 'a string', col: 0, row: 0, accent: true, note: 'The relay logic sits here inside a string. That is why the braces are doubled — this file is not executed code, it is a mould that stamps out code.' },
-    { id: 'gen', label: 'Generated api.py', sub: 'one per provider', col: 1, row: 0, note: 'One file is produced for each registered external provider. The relay logic is copied into every one of them.' },
-    { id: 'sub', label: 'Sub-app', sub: 'mounted', col: 2, row: 0, note: 'The router extracted from the generated file is attached here. Only now is it callable.' },
-    { id: 'regen', label: 'Regenerate all', sub: 'maintenance API', col: 1, row: 1, note: 'Fixing the template does not touch files already produced; they keep the old code. So a dedicated endpoint exists purely to stamp every deployed file again.' },
+    {
+      id: 'tpl',
+      label: 'Generation template',
+      sub: 'a string',
+      col: 0,
+      row: 0,
+      accent: true,
+      note: 'The relay logic sits here inside a string. That is why the braces are doubled — this file is not executed code, it is a mould that stamps out code.',
+    },
+    {
+      id: 'gen',
+      label: 'Generated api.py',
+      sub: 'one per provider',
+      col: 1,
+      row: 0,
+      note: 'One file is produced for each registered external provider. The relay logic is copied into every one of them.',
+    },
+    {
+      id: 'sub',
+      label: 'Sub-app',
+      sub: 'mounted',
+      col: 2,
+      row: 0,
+      note: 'The router extracted from the generated file is attached here. Only now is it callable.',
+    },
+    {
+      id: 'regen',
+      label: 'Regenerate all',
+      sub: 'maintenance API',
+      col: 1,
+      row: 1,
+      note: 'Fixing the template does not touch files already produced; they keep the old code. So a dedicated endpoint exists purely to stamp every deployed file again.',
+    },
   ]}
   edges={[
     { from: 'tpl', to: 'gen', label: 'stamps' },

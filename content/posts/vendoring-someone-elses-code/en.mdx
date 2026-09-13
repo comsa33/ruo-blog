@@ -12,11 +12,11 @@ That is where the choice appears.
 
 ## Three roads
 
-| Option | Our changes | Upstream updates | Diffability |
-|---|---|---|---|
-| Use as a dependency | impossible | automatic | not needed |
-| Fork | free | cherry-pick required | blurs quickly |
-| **Vendor** | free | selective | **maintainable** |
+| Option              | Our changes | Upstream updates     | Diffability      |
+| ------------------- | ----------- | -------------------- | ---------------- |
+| Use as a dependency | impossible  | automatic            | not needed       |
+| Fork                | free        | cherry-pick required | blurs quickly    |
+| **Vendor**          | free        | selective            | **maintainable** |
 
 As a dependency the prompt cannot be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
 
@@ -42,10 +42,30 @@ Vendoring is not copying. Copying is easy; keeping it is not. What makes it keep
   caption="Bringing vendored code in"
   actors={['Upstream', 'Commit 1', 'Commit 2', 'Commit 3']}
   steps={[
-    { from: 'Upstream', to: 'Commit 1', label: 'not one line changed', note: 'The original, verbatim. This commit is the reference point. Mix anything else in and the reference point is gone.' },
-    { from: 'Commit 1', to: 'Commit 2', label: 'path rewrites only', note: 'Import paths and nothing else. 82 of them. Mechanical, so it needs no review and can be ignored in later diffs.' },
-    { from: 'Commit 2', to: 'Commit 3', label: 'our changes', note: 'Only now do the real modifications land. The diff of this commit is exactly "everything we differ from upstream by".' },
-    { from: 'Commit 3', to: 'Commit 3', label: 'and everything after', note: 'Later changes stack the same way. Mix 1 and 3 and you permanently lose the ability to tell original from ours.' },
+    {
+      from: 'Upstream',
+      to: 'Commit 1',
+      label: 'not one line changed',
+      note: 'The original, verbatim. This commit is the reference point. Mix anything else in and the reference point is gone.',
+    },
+    {
+      from: 'Commit 1',
+      to: 'Commit 2',
+      label: 'path rewrites only',
+      note: 'Import paths and nothing else. 82 of them. Mechanical, so it needs no review and can be ignored in later diffs.',
+    },
+    {
+      from: 'Commit 2',
+      to: 'Commit 3',
+      label: 'our changes',
+      note: 'Only now do the real modifications land. The diff of this commit is exactly "everything we differ from upstream by".',
+    },
+    {
+      from: 'Commit 3',
+      to: 'Commit 3',
+      label: 'and everything after',
+      note: 'Later changes stack the same way. Mix 1 and 3 and you permanently lose the ability to tell original from ours.',
+    },
   ]}
 />
 
@@ -84,7 +104,8 @@ Then you open it.
         { text: 'await asyncio.to_thread(embedding.embed, ...)' },
         { text: 'await asyncio.to_thread(vector_store.search, ...)' },
       ],
-      verdict: 'Every one of them hands a synchronous function to a thread. Nowhere in the store or embedding adapters is there an async function or an async HTTP client.',
+      verdict:
+        'Every one of them hands a synchronous function to a thread. Nowhere in the store or embedding adapters is there an async function or an async HTTP client.',
       bad: true,
     },
   ]}
@@ -117,6 +138,7 @@ Version 2 of the library contains an undocumented **entity linking** feature. It
 Nothing turns it on or off. It activates **automatically** if a morphological analysis library happens to be installed. It is dormant here only because that library is absent.
 
 The moment somebody adds it as a dependency for a completely unrelated reason, an entity table appears and every ingest starts paying for entity embeddings — with no code change at all.
+
 </Callout>
 
 It is also close to useless for Korean. The model is hardcoded for English, and the check for whether a token is a name is **whether its first character is uppercase.** Korean has no uppercase, so nothing ever qualifies. Turned on, it costs and does nothing.

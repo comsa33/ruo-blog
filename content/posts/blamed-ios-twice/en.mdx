@@ -50,12 +50,43 @@ The start function looked like this: clear the buffer, request microphone permis
   caption="What happens when the start button is tapped twice"
   actors={['User', 'Start function', 'Recorder A', 'Chunk buffer']}
   steps={[
-    { from: 'User', to: 'Start function', label: 'first tap', note: 'Clears the buffer and waits on getUserMedia. Hundreds of milliseconds.' },
-    { from: 'Start function', to: 'Recorder A', label: 'start recorder A', note: 'A puts the initialisation segment into the buffer as its first chunk. Everything is fine up to here.' },
-    { from: 'User', to: 'Start function', label: 'second tap', note: 'Nothing seems to happen, so the user taps again. The first call has not returned, and the second call proceeds anyway.' },
-    { from: 'Start function', to: 'Chunk buffer', label: 'clear the buffer', note: 'The second call clears the buffer as the rule says. This is where the initialisation segment A wrote disappears.' },
-    { from: 'Recorder A', to: 'Chunk buffer', label: 'a fragment every 100ms', async: true, note: 'Nobody stopped A. It stays alive and keeps pushing fragments into the new buffer. The header is already gone.' },
-    { from: 'Chunk buffer', to: 'User', label: 'a file starting with moof', note: "B's initialisation segment only arrives after its own getUserMedia resolves, by which point A's fragments already sit in front of it." },
+    {
+      from: 'User',
+      to: 'Start function',
+      label: 'first tap',
+      note: 'Clears the buffer and waits on getUserMedia. Hundreds of milliseconds.',
+    },
+    {
+      from: 'Start function',
+      to: 'Recorder A',
+      label: 'start recorder A',
+      note: 'A puts the initialisation segment into the buffer as its first chunk. Everything is fine up to here.',
+    },
+    {
+      from: 'User',
+      to: 'Start function',
+      label: 'second tap',
+      note: 'Nothing seems to happen, so the user taps again. The first call has not returned, and the second call proceeds anyway.',
+    },
+    {
+      from: 'Start function',
+      to: 'Chunk buffer',
+      label: 'clear the buffer',
+      note: 'The second call clears the buffer as the rule says. This is where the initialisation segment A wrote disappears.',
+    },
+    {
+      from: 'Recorder A',
+      to: 'Chunk buffer',
+      label: 'a fragment every 100ms',
+      async: true,
+      note: 'Nobody stopped A. It stays alive and keeps pushing fragments into the new buffer. The header is already gone.',
+    },
+    {
+      from: 'Chunk buffer',
+      to: 'User',
+      label: 'a file starting with moof',
+      note: "B's initialisation segment only arrives after its own getUserMedia resolves, by which point A's fragments already sit in front of it.",
+    },
   ]}
 />
 
@@ -75,21 +106,27 @@ The middle one hides a trap. If you detach `onstop` as well while cleaning up th
 Having found the cause, I went back over the failure counts I had been quoting.
 
 | Date | Success | Failure | Rate |
-|---|---|---|---|
-| 9/05 | 265 | 0 | 0% |
-| 9/06 | 233 | 0 | 0% |
-| 9/07 | 220 | 7 | 3.1% |
-| 9/08 | 273 | 5 | 1.8% |
-| 9/09 | 108 | 5 | 4.4% |
+| ---- | ------- | ------- | ---- |
+| 9/05 | 265     | 0       | 0%   |
+| 9/06 | 233     | 0       | 0%   |
+| 9/07 | 220     | 7       | 3.1% |
+| 9/08 | 273     | 5       | 1.8% |
+| 9/09 | 108     | 5       | 4.4% |
 
 The seven on 7 September looks like the worst day. **Six of them were local tests I ran myself.** One real user failed.
 
 Recounted properly:
 
 <Metrics>
-  <Metric value="11" label="real user failures out of 17 total. The other six were test requests I generated" />
+  <Metric
+    value="11"
+    label="real user failures out of 17 total. The other six were test requests I generated"
+  />
   <Metric value="2" label="actual people behind those 11. The same person retried several times" />
-  <Metric value="iOS 18.7" label="every one of the 11 was an iPhone on 18.7. This is why the first misdiagnosis felt so plausible" />
+  <Metric
+    value="iOS 18.7"
+    label="every one of the 11 was an iPhone on 18.7. This is why the first misdiagnosis felt so plausible"
+  />
 </Metrics>
 
 My own test traffic had leaked into a production failure metric. Read in a hurry it shows 3.1%; what actually happened to users was 0.45%. **If you cannot subtract your own noise from your own metrics, you will rank the wrong thing first.**

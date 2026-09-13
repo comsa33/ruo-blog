@@ -72,8 +72,12 @@ export function Structure({ nodes, edges, hint }: Props) {
   return (
     <figure className={styles.wrap} onMouseLeave={() => setFocus(null)}>
       <div className={styles.stage}>
-        <svg className={styles.svg} viewBox={`0 0 ${W} ${height}`} role="img"
-          aria-label="Architecture diagram">
+        <svg
+          className={styles.svg}
+          viewBox={`0 0 ${W} ${height}`}
+          role="img"
+          aria-label="Architecture diagram"
+        >
           {edges.map((e, i) => {
             const a = pos.get(e.from);
             const b = pos.get(e.to);
@@ -102,12 +106,19 @@ export function Structure({ nodes, edges, hint }: Props) {
                 key={i}
                 className={[lit ? styles.lit : '', focus && !lit ? styles.faded : ''].join(' ')}
               >
-                <path className={styles.edge} d={d}
-                  strokeDasharray={e.dashed ? '4 4' : undefined} />
+                <path
+                  className={styles.edge}
+                  d={d}
+                  strokeDasharray={e.dashed ? '4 4' : undefined}
+                />
                 <path className={styles.edgeHead} d={head} />
                 {e.label && (
-                  <text className={styles.edgeLabel} x={(x1 + x2) / 2}
-                    y={sameRow ? y1 - 7 : (y1 + y2) / 2 - 4} textAnchor="middle">
+                  <text
+                    className={styles.edgeLabel}
+                    x={(x1 + x2) / 2}
+                    y={sameRow ? y1 - 7 : (y1 + y2) / 2 - 4}
+                    textAnchor="middle"
+                  >
                     {e.label}
                   </text>
                 )}
@@ -135,8 +146,12 @@ export function Structure({ nodes, edges, hint }: Props) {
                   height={NODE_H}
                   rx={8}
                 />
-                <text className={styles.nodeLabel} x={p.cx} y={n.sub ? p.cy : p.cy + 4}
-                  textAnchor="middle">
+                <text
+                  className={styles.nodeLabel}
+                  x={p.cx}
+                  y={n.sub ? p.cy : p.cy + 4}
+                  textAnchor="middle"
+                >
                   {n.label}
                 </text>
                 {n.sub && (

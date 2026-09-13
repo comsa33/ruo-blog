@@ -56,7 +56,6 @@ const READ_AT = 0.44;
  *  as a glitch rather than as an answer to where the reader stopped. */
 const SCROLL_INTENT_MS = 180;
 
-
 /**
  * A run of text as words, each its own inline-block with an order, so the
  * summary and the opening can trade places one word at a time. A multi-word

@@ -16,12 +16,48 @@ The question is whether the two sentences are **the same fact**, and that is ans
 
 <Structure
   nodes={[
-    { id: 'tool', label: 'Write request', sub: 'model → memory', col: 0, row: 0, note: 'The model asks to record one fact about the user.' },
-    { id: 'hash', label: 'Hash check', col: 1, row: 0, note: 'An identical sentence ends here. No new row; the existing one just has its timestamp revived.' },
-    { id: 'sim', label: 'Similarity check', sub: 'threshold A', col: 2, row: 0, accent: true, note: 'Looks for a near-identical fact in the same category. Above the line it overwrites, below it writes a new one. The subject of this post.' },
-    { id: 'promote', label: 'Promotion check', sub: 'threshold B', col: 2, row: 1, accent: true, note: 'If an automatically extracted memory holds the same fact, overwrite and promote it. A second threshold is needed here.' },
+    {
+      id: 'tool',
+      label: 'Write request',
+      sub: 'model → memory',
+      col: 0,
+      row: 0,
+      note: 'The model asks to record one fact about the user.',
+    },
+    {
+      id: 'hash',
+      label: 'Hash check',
+      col: 1,
+      row: 0,
+      note: 'An identical sentence ends here. No new row; the existing one just has its timestamp revived.',
+    },
+    {
+      id: 'sim',
+      label: 'Similarity check',
+      sub: 'threshold A',
+      col: 2,
+      row: 0,
+      accent: true,
+      note: 'Looks for a near-identical fact in the same category. Above the line it overwrites, below it writes a new one. The subject of this post.',
+    },
+    {
+      id: 'promote',
+      label: 'Promotion check',
+      sub: 'threshold B',
+      col: 2,
+      row: 1,
+      accent: true,
+      note: 'If an automatically extracted memory holds the same fact, overwrite and promote it. A second threshold is needed here.',
+    },
     { id: 'store', label: 'Store', col: 3, row: 0, note: 'Ends as one of: insert, update, skip.' },
-    { id: 'auto', label: 'Auto-extracted', sub: 'episode', col: 1, row: 1, note: 'Memories pulled from conversation automatically. Less trustworthy than what the model wrote deliberately.' },
+    {
+      id: 'auto',
+      label: 'Auto-extracted',
+      sub: 'episode',
+      col: 1,
+      row: 1,
+      note: 'Memories pulled from conversation automatically. Less trustworthy than what the model wrote deliberately.',
+    },
   ]}
   edges={[
     { from: 'tool', to: 'hash' },
@@ -57,15 +93,23 @@ The first two belong **above** the line, the last two **below** it. Setting a th
 <Threshold
   caption="Promotion threshold sweep — 51 real pairs"
   clusters={[
-    { key: 'A', name: 'same fact', n: 20, min: 0.7630, max: 1.0000, mean: 0.9305, want: 'above' },
-    { key: 'D', name: 'correction', n: 7, min: 0.3574, max: 0.9428, mean: 0.7750, want: 'above' },
-    { key: 'B', name: 'added detail', n: 4, min: 0.6027, max: 0.8437, mean: 0.7450, want: 'below' },
-    { key: 'C', name: 'different fact', n: 20, min: 0.1902, max: 0.6271, mean: 0.3846, want: 'below' },
+    { key: 'A', name: 'same fact', n: 20, min: 0.763, max: 1.0, mean: 0.9305, want: 'above' },
+    { key: 'D', name: 'correction', n: 7, min: 0.3574, max: 0.9428, mean: 0.775, want: 'above' },
+    { key: 'B', name: 'added detail', n: 4, min: 0.6027, max: 0.8437, mean: 0.745, want: 'below' },
+    {
+      key: 'C',
+      name: 'different fact',
+      n: 20,
+      min: 0.1902,
+      max: 0.6271,
+      mean: 0.3846,
+      want: 'below',
+    },
   ]}
   sweep={[
-    { at: 0.80, counts: { A: 19, D: 5, B: 2, C: 0 } },
+    { at: 0.8, counts: { A: 19, D: 5, B: 2, C: 0 } },
     { at: 0.85, counts: { A: 18, D: 4, B: 0, C: 0 } },
-    { at: 0.90, counts: { A: 14, D: 3, B: 0, C: 0 } },
+    { at: 0.9, counts: { A: 14, D: 3, B: 0, C: 0 } },
   ]}
   chosen={0.85}
   chosenNote="shipped at 0.85"
@@ -79,20 +123,23 @@ Press 0.80 and **two of the four added-detail pairs get overwritten.** Push to 0
 
 <Metrics>
   <Metric value="+0.22" label="margin to different facts. Overwriting one destroys it" />
-  <Metric value="+0.006" label="margin to added detail. The fact survives; only the elaboration is lost" />
+  <Metric
+    value="+0.006"
+    label="margin to added detail. The fact survives; only the elaboration is lost"
+  />
 </Metrics>
 
-The thin margin is on the less dangerous side. Losing an elaboration loses the *why* but keeps the *what*, and history can restore it. Losing a different fact destroys the fact itself, silently.
+The thin margin is on the less dangerous side. Losing an elaboration loses the _why_ but keeps the _what_, and history can restore it. Losing a different fact destroys the fact itself, silently.
 
 So **the margin was given to the dangerous axis.** The asymmetry between 0.22 and 0.006 is a decision, not an oversight.
 
 The same principle set the merge threshold, measured separately over 28 pairs.
 
-| Group | Meaning | min | max | mean |
-|---|---|---|---|---|
-| Near duplicate | same fact, different wording — merge | 0.8217 | 0.9706 | 0.8885 |
-| Legitimate update | same subject, changed value | 0.7508 | 0.9543 | 0.8612 |
-| Different fact | same category only — never merge | 0.3225 | 0.7113 | 0.5291 |
+| Group             | Meaning                              | min    | max    | mean   |
+| ----------------- | ------------------------------------ | ------ | ------ | ------ |
+| Near duplicate    | same fact, different wording — merge | 0.8217 | 0.9706 | 0.8885 |
+| Legitimate update | same subject, changed value          | 0.7508 | 0.9543 | 0.8612 |
+| Different fact    | same category only — never merge     | 0.3225 | 0.7113 | 0.5291 |
 
 <Compare
   caption="Gap between what must merge and what must not be touched"
@@ -124,8 +171,14 @@ Measuring surfaced a region no threshold reaches.
     {
       key: 'diff',
       label: 'Correction in a different frame',
-      output: [{ attr: '0.3574 – 0.5966', text: 'Their remit changed and they now handle cohort analysis.' }],
-      verdict: 'A correction of the same fact, landing inside the different-fact cluster. No threshold catches it.',
+      output: [
+        {
+          attr: '0.3574 – 0.5966',
+          text: 'Their remit changed and they now handle cohort analysis.',
+        },
+      ],
+      verdict:
+        'A correction of the same fact, landing inside the different-fact cluster. No threshold catches it.',
       bad: true,
     },
   ]}

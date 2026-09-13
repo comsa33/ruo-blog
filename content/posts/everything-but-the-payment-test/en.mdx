@@ -33,6 +33,7 @@ The agent was not wrong. `minifyEnabled` and `shrinkResources` are the options G
 An ordinary release here changes only web code. The app loads its web layer remotely, so a web deploy reaches the app immediately and the native shell never moves. Rebuilding the app is rare.
 
 This time I **changed the native build configuration.** It was a different kind of release, and I verified it to the standard of the ordinary kind.
+
 </Callout>
 
 ## Ten days, and nothing said a word
@@ -106,12 +107,55 @@ It was not a class that was missing. It was the **registry**.
 <Structure
   hint="Hover a node to keep only what it connects to"
   nodes={[
-    { id: 'js', label: 'WebView JS', sub: 'store.initialize()', col: 0, row: 0, note: 'Where the web code starts a purchase. Nothing was ever wrong this far along.' },
-    { id: 'bridge', label: 'ExposedJsApi', sub: 'JS→native', col: 1, row: 0, note: 'The bridge that carries a JS call into native. R8 deleted it whole. Restored on the second attempt.' },
-    { id: 'manager', label: 'PluginManager', sub: 'Cordova', col: 2, row: 0, note: 'Takes a service name and finds the class. What it looks the name up in is not itself — it is config.xml.' },
-    { id: 'plugin', label: 'PurchasePlugin', sub: 'cc.fovea', col: 3, row: 0, note: 'Sitting in the APK the whole time. Nobody was calling its name.' },
-    { id: 'config', label: 'config.xml', sub: 'res/xml', col: 2, row: 1, accent: true, note: 'The plugin registry. The resource shrinker judged it unused and deleted it. This one file is why Class not found happened.' },
-    { id: 'billing', label: 'BillingClient', sub: 'Play Billing', col: 3, row: 1, note: 'The layer that actually talks to Google Play. Logcat was silent because nothing ever reached here.' },
+    {
+      id: 'js',
+      label: 'WebView JS',
+      sub: 'store.initialize()',
+      col: 0,
+      row: 0,
+      note: 'Where the web code starts a purchase. Nothing was ever wrong this far along.',
+    },
+    {
+      id: 'bridge',
+      label: 'ExposedJsApi',
+      sub: 'JS→native',
+      col: 1,
+      row: 0,
+      note: 'The bridge that carries a JS call into native. R8 deleted it whole. Restored on the second attempt.',
+    },
+    {
+      id: 'manager',
+      label: 'PluginManager',
+      sub: 'Cordova',
+      col: 2,
+      row: 0,
+      note: 'Takes a service name and finds the class. What it looks the name up in is not itself — it is config.xml.',
+    },
+    {
+      id: 'plugin',
+      label: 'PurchasePlugin',
+      sub: 'cc.fovea',
+      col: 3,
+      row: 0,
+      note: 'Sitting in the APK the whole time. Nobody was calling its name.',
+    },
+    {
+      id: 'config',
+      label: 'config.xml',
+      sub: 'res/xml',
+      col: 2,
+      row: 1,
+      accent: true,
+      note: 'The plugin registry. The resource shrinker judged it unused and deleted it. This one file is why Class not found happened.',
+    },
+    {
+      id: 'billing',
+      label: 'BillingClient',
+      sub: 'Play Billing',
+      col: 3,
+      row: 1,
+      note: 'The layer that actually talks to Google Play. Logcat was silent because nothing ever reached here.',
+    },
   ]}
   edges={[
     { from: 'js', to: 'bridge' },
@@ -122,10 +166,10 @@ It was not a class that was missing. It was the **registry**.
   ]}
 />
 
-| Cause | Enabled | What disappeared |
-|---|---|---|
-| Resource shrinking | Sep 1 | The plugin registry, `res/xml/config.xml` |
-| Code shrinking | Aug 31 | Payment callbacks, the Cordova bridge classes |
+| Cause              | Enabled | What disappeared                              |
+| ------------------ | ------- | --------------------------------------------- |
+| Resource shrinking | Sep 1   | The plugin registry, `res/xml/config.xml`     |
+| Code shrinking     | Aug 31  | Payment callbacks, the Cordova bridge classes |
 
 **Both produce the same symptom.** It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I made two correct fixes while believing both were wrong.
 

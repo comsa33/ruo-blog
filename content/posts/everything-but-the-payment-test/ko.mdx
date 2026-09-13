@@ -33,6 +33,7 @@ Play Console 이 DEX 코드 최적화를 요구했다. 권고가 아니라 요�
 평소 릴리스는 웹 코드만 바뀐다. 원격 로드 방식이라 웹을 배포하면 앱에 즉시 반영되고, 네이티브 껍데기는 그대로다. 그래서 앱을 다시 빌드할 일 자체가 드물다.
 
 이번엔 **네이티브 빌드 설정을 바꿨다.** 평소와 다른 종류의 릴리스였는데 평소와 같은 수준으로 확인했다.
+
 </Callout>
 
 ## 열흘 동안 아무 신호도 없었다
@@ -106,12 +107,55 @@ res/xml/config.xml                   없음
 <Structure
   hint="노드에 커서를 올리면 연결된 것만 남는다"
   nodes={[
-    { id: 'js', label: '웹뷰 JS', sub: 'store.initialize()', col: 0, row: 0, note: '웹 코드가 결제를 시작하는 지점. 여기까지는 아무 문제가 없었다.' },
-    { id: 'bridge', label: 'ExposedJsApi', sub: 'JS→네이티브', col: 1, row: 0, note: 'JS 호출을 네이티브로 넘기는 브리지. R8 이 통째로 지웠다. 두 번째 시도에서 되살렸다.' },
-    { id: 'manager', label: 'PluginManager', sub: 'Cordova', col: 2, row: 0, note: '서비스 이름을 받아 클래스를 찾아준다. 찾는 근거는 자기가 들고 있는 게 아니라 config.xml 이다.' },
-    { id: 'plugin', label: 'PurchasePlugin', sub: 'cc.fovea', col: 3, row: 0, note: 'APK 안에 멀쩡히 있었다. 아무도 이름을 불러주지 않았을 뿐이다.' },
-    { id: 'config', label: 'config.xml', sub: 'res/xml', col: 2, row: 1, accent: true, note: '플러그인 등록부. 리소스 축소기가 미사용으로 판단해 삭제했다. 이것 하나가 없어서 Class not found 가 났다.' },
-    { id: 'billing', label: 'BillingClient', sub: 'Play Billing', col: 3, row: 1, note: 'Google Play 와 실제로 이야기하는 층. logcat 에 로그가 한 줄도 없었던 이유는 여기까지 오지도 못했기 때문이다.' },
+    {
+      id: 'js',
+      label: '웹뷰 JS',
+      sub: 'store.initialize()',
+      col: 0,
+      row: 0,
+      note: '웹 코드가 결제를 시작하는 지점. 여기까지는 아무 문제가 없었다.',
+    },
+    {
+      id: 'bridge',
+      label: 'ExposedJsApi',
+      sub: 'JS→네이티브',
+      col: 1,
+      row: 0,
+      note: 'JS 호출을 네이티브로 넘기는 브리지. R8 이 통째로 지웠다. 두 번째 시도에서 되살렸다.',
+    },
+    {
+      id: 'manager',
+      label: 'PluginManager',
+      sub: 'Cordova',
+      col: 2,
+      row: 0,
+      note: '서비스 이름을 받아 클래스를 찾아준다. 찾는 근거는 자기가 들고 있는 게 아니라 config.xml 이다.',
+    },
+    {
+      id: 'plugin',
+      label: 'PurchasePlugin',
+      sub: 'cc.fovea',
+      col: 3,
+      row: 0,
+      note: 'APK 안에 멀쩡히 있었다. 아무도 이름을 불러주지 않았을 뿐이다.',
+    },
+    {
+      id: 'config',
+      label: 'config.xml',
+      sub: 'res/xml',
+      col: 2,
+      row: 1,
+      accent: true,
+      note: '플러그인 등록부. 리소스 축소기가 미사용으로 판단해 삭제했다. 이것 하나가 없어서 Class not found 가 났다.',
+    },
+    {
+      id: 'billing',
+      label: 'BillingClient',
+      sub: 'Play Billing',
+      col: 3,
+      row: 1,
+      note: 'Google Play 와 실제로 이야기하는 층. logcat 에 로그가 한 줄도 없었던 이유는 여기까지 오지도 못했기 때문이다.',
+    },
   ]}
   edges={[
     { from: 'js', to: 'bridge' },
@@ -122,10 +166,10 @@ res/xml/config.xml                   없음
   ]}
 />
 
-| 원인 | 켠 시점 | 무엇이 사라졌나 |
-|---|---|---|
-| 리소스 축소 | 9/1 | 플러그인 등록부 `res/xml/config.xml` |
-| 코드 축소 | 8/31 | 결제 콜백, Cordova 브리지 클래스 |
+| 원인        | 켠 시점 | 무엇이 사라졌나                      |
+| ----------- | ------- | ------------------------------------ |
+| 리소스 축소 | 9/1     | 플러그인 등록부 `res/xml/config.xml` |
+| 코드 축소   | 8/31    | 결제 콜백, Cordova 브리지 클래스     |
 
 **둘 다 증상이 똑같다.** "처리 중…" 에서 멈춘다. 그래서 하나를 정확히 고쳐도 화면은 그대로였고, 나는 맞는 수정을 두 번 하고도 틀렸다고 생각했다.
 

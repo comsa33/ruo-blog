@@ -48,7 +48,9 @@ export function Series({ caption, series, xLabel, yLabel }: Props) {
   const py = (v: number) => T + (1 - v / niceMax) * (H - T - B);
 
   const pathOf = (values: number[]) =>
-    values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${px(i).toFixed(1)} ${py(v).toFixed(1)}`).join(' ');
+    values
+      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${px(i).toFixed(1)} ${py(v).toFixed(1)}`)
+      .join(' ');
 
   const ticks = [0, niceMax / 2, niceMax];
 

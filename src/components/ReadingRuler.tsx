@@ -96,8 +96,7 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
       // padding — which is what went wrong when the hit area was introduced.
       const bar = (row?.firstElementChild as HTMLElement | null) ?? row ?? null;
       const rect = bar?.getBoundingClientRect();
-      const y =
-        visible && rect ? rect.top + rect.height / 2 : window.innerHeight * FIXED_LINE;
+      const y = visible && rect ? rect.top + rect.height / 2 : window.innerHeight * FIXED_LINE;
       // --line-y is the centre both the line and the marker sit on; each pulls
       // itself up by half its own height. Rounding it to a whole pixel put the
       // 1px line one pixel below the 1px bar, so the two ran as neighbours
@@ -220,7 +219,10 @@ export function ReadingRuler({ nextLabel, topLabel }: { nextLabel: string; topLa
               i === active ? styles.active : '',
             ].join(' ')}
             onClick={() =>
-              window.scrollTo({ top: t.top - window.innerHeight * (READ_AT - 0.06), behavior: 'smooth' })
+              window.scrollTo({
+                top: t.top - window.innerHeight * (READ_AT - 0.06),
+                behavior: 'smooth',
+              })
             }
           >
             <span className={styles.bar} />

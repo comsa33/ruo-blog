@@ -82,11 +82,26 @@ export function Threshold({ caption, clusters, sweep, chosen, chosenNote }: Prop
           })}
 
           {/* threshold */}
-          <g style={{ transform: `translateX(${x(at) - x(0)}px)` }} className={styles.thresholdLine}>
-            <line x1={x(0)} y1={TOP - 12} x2={x(0)} y2={H - 22} stroke="var(--accent)"
-              strokeWidth={1.5} />
-            <rect className={styles.thresholdFlag} x={x(0) - 19} y={TOP - 26} width={38} height={15}
-              rx={4} />
+          <g
+            style={{ transform: `translateX(${x(at) - x(0)}px)` }}
+            className={styles.thresholdLine}
+          >
+            <line
+              x1={x(0)}
+              y1={TOP - 12}
+              x2={x(0)}
+              y2={H - 22}
+              stroke="var(--accent)"
+              strokeWidth={1.5}
+            />
+            <rect
+              className={styles.thresholdFlag}
+              x={x(0) - 19}
+              y={TOP - 26}
+              width={38}
+              height={15}
+              rx={4}
+            />
             <text className={styles.thresholdText} x={x(0)} y={TOP - 15} textAnchor="middle">
               {at.toFixed(2)}
             </text>
@@ -104,9 +119,7 @@ export function Threshold({ caption, clusters, sweep, chosen, chosenNote }: Prop
             {s.at.toFixed(2)}
           </button>
         ))}
-        <span className={styles.chosenTag}>
-          {chosenNote ?? `채택 ${chosen.toFixed(2)}`}
-        </span>
+        <span className={styles.chosenTag}>{chosenNote ?? `채택 ${chosen.toFixed(2)}`}</span>
       </div>
 
       <div className={styles.verdict}>

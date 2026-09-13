@@ -16,12 +16,54 @@ tags: ['임계값', '임베딩', '벤치마크']
 
 <Structure
   nodes={[
-    { id: 'tool', label: '쓰기 요청', sub: 'model → memory', col: 0, row: 0, note: '모델이 사용자에 대한 사실 하나를 쓰겠다고 요청한다.' },
-    { id: 'hash', label: '해시 대조', col: 1, row: 0, note: '완전히 같은 문장이면 여기서 끝난다. 새 행을 만들지 않고 기존 행의 시각만 되살린다.' },
-    { id: 'sim', label: '유사도 대조', sub: 'threshold A', col: 2, row: 0, accent: true, note: '같은 분류 안에 비슷한 사실이 있는지 본다. 임계를 넘으면 덮어쓰고, 못 넘으면 새로 쓴다. 이 글의 주제.' },
-    { id: 'promote', label: '격상 판정', sub: 'threshold B', col: 2, row: 1, accent: true, note: '자동 추출로 들어온 낡은 기억 중 같은 사실이 있으면, 그것을 덮어써서 승격시킨다. 임계가 하나 더 필요한 자리.' },
-    { id: 'store', label: '저장', col: 3, row: 0, note: '신규 저장 · 갱신 · 생략 중 하나로 끝난다.' },
-    { id: 'auto', label: '자동 추출분', sub: 'episode', col: 1, row: 1, note: '대화에서 자동으로 뽑혀 쌓인 기억. 모델이 직접 쓴 것보다 신뢰도가 낮다.' },
+    {
+      id: 'tool',
+      label: '쓰기 요청',
+      sub: 'model → memory',
+      col: 0,
+      row: 0,
+      note: '모델이 사용자에 대한 사실 하나를 쓰겠다고 요청한다.',
+    },
+    {
+      id: 'hash',
+      label: '해시 대조',
+      col: 1,
+      row: 0,
+      note: '완전히 같은 문장이면 여기서 끝난다. 새 행을 만들지 않고 기존 행의 시각만 되살린다.',
+    },
+    {
+      id: 'sim',
+      label: '유사도 대조',
+      sub: 'threshold A',
+      col: 2,
+      row: 0,
+      accent: true,
+      note: '같은 분류 안에 비슷한 사실이 있는지 본다. 임계를 넘으면 덮어쓰고, 못 넘으면 새로 쓴다. 이 글의 주제.',
+    },
+    {
+      id: 'promote',
+      label: '격상 판정',
+      sub: 'threshold B',
+      col: 2,
+      row: 1,
+      accent: true,
+      note: '자동 추출로 들어온 낡은 기억 중 같은 사실이 있으면, 그것을 덮어써서 승격시킨다. 임계가 하나 더 필요한 자리.',
+    },
+    {
+      id: 'store',
+      label: '저장',
+      col: 3,
+      row: 0,
+      note: '신규 저장 · 갱신 · 생략 중 하나로 끝난다.',
+    },
+    {
+      id: 'auto',
+      label: '자동 추출분',
+      sub: 'episode',
+      col: 1,
+      row: 1,
+      note: '대화에서 자동으로 뽑혀 쌓인 기억. 모델이 직접 쓴 것보다 신뢰도가 낮다.',
+    },
   ]}
   edges={[
     { from: 'tool', to: 'hash' },
@@ -57,15 +99,15 @@ tags: ['임계값', '임베딩', '벤치마크']
 <Threshold
   caption="격상 임계값 스윕 — 실물 쌍 51개"
   clusters={[
-    { key: 'A', name: '같은 사실', n: 20, min: 0.7630, max: 1.0000, mean: 0.9305, want: 'above' },
-    { key: 'D', name: '정정', n: 7, min: 0.3574, max: 0.9428, mean: 0.7750, want: 'above' },
-    { key: 'B', name: '상세 추가', n: 4, min: 0.6027, max: 0.8437, mean: 0.7450, want: 'below' },
+    { key: 'A', name: '같은 사실', n: 20, min: 0.763, max: 1.0, mean: 0.9305, want: 'above' },
+    { key: 'D', name: '정정', n: 7, min: 0.3574, max: 0.9428, mean: 0.775, want: 'above' },
+    { key: 'B', name: '상세 추가', n: 4, min: 0.6027, max: 0.8437, mean: 0.745, want: 'below' },
     { key: 'C', name: '별개 사실', n: 20, min: 0.1902, max: 0.6271, mean: 0.3846, want: 'below' },
   ]}
   sweep={[
-    { at: 0.80, counts: { A: 19, D: 5, B: 2, C: 0 } },
+    { at: 0.8, counts: { A: 19, D: 5, B: 2, C: 0 } },
     { at: 0.85, counts: { A: 18, D: 4, B: 0, C: 0 } },
-    { at: 0.90, counts: { A: 14, D: 3, B: 0, C: 0 } },
+    { at: 0.9, counts: { A: 14, D: 3, B: 0, C: 0 } },
   ]}
   chosen={0.85}
   chosenNote="채택 0.85"
@@ -88,11 +130,11 @@ tags: ['임계값', '임베딩', '벤치마크']
 
 같은 원칙이 중복 병합 임계에도 적용됐다. 이쪽은 쌍 28개로 따로 쟀다.
 
-| 무리 | 뜻 | min | max | mean |
-|---|---|---|---|---|
+| 무리      | 뜻                                 | min    | max    | mean   |
+| --------- | ---------------------------------- | ------ | ------ | ------ |
 | 근사 중복 | 같은 사실, 표현만 다름 — 병합 대상 | 0.8217 | 0.9706 | 0.8885 |
-| 정당 갱신 | 같은 주제, 사실이 바뀜 | 0.7508 | 0.9543 | 0.8612 |
-| 별개 사실 | 분류만 같음 — 병합 금지 | 0.3225 | 0.7113 | 0.5291 |
+| 정당 갱신 | 같은 주제, 사실이 바뀜             | 0.7508 | 0.9543 | 0.8612 |
+| 별개 사실 | 분류만 같음 — 병합 금지            | 0.3225 | 0.7113 | 0.5291 |
 
 <Compare
   caption="병합해야 할 무리와 건드리면 안 되는 무리 사이의 간격"

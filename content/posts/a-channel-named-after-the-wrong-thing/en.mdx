@@ -34,12 +34,44 @@ The problem is that **the sandbox passed its request ID down unchanged when it c
   caption="The moment there are two subscribers"
   actors={['Browser', 'Chat service A', 'Sandbox', 'Chat service B']}
   steps={[
-    { from: 'Browser', to: 'Chat service A', label: 'query', note: 'A subscribes to sse.response:ORIG. Correct so far.' },
-    { from: 'Chat service A', to: 'Sandbox', label: 'run code', note: 'The user-written code starts running. Progress messages are published by the sandbox onto that same channel.' },
-    { from: 'Sandbox', to: 'Chat service B', label: 'call another agent · same request ID', note: 'The ID is passed through as-is. B builds its own channel name from it — sse.response:ORIG. The channel A is already listening to.' },
-    { from: 'Chat service B', to: 'Sandbox', label: 'token "print"', note: 'B receives a token from the model and returns it to the sandbox, which publishes it to the channel.' },
-    { from: 'Sandbox', to: 'Chat service B', label: 'reads back what it wrote', async: true, note: 'B is a subscriber too. It receives the event its own answer caused, and streams that out as response. The sandbox publishes again.' },
-    { from: 'Sandbox', to: 'Browser', label: 'the same token, over and over', async: true, note: 'A is listening to the same channel, so every repetition goes to the browser.' },
+    {
+      from: 'Browser',
+      to: 'Chat service A',
+      label: 'query',
+      note: 'A subscribes to sse.response:ORIG. Correct so far.',
+    },
+    {
+      from: 'Chat service A',
+      to: 'Sandbox',
+      label: 'run code',
+      note: 'The user-written code starts running. Progress messages are published by the sandbox onto that same channel.',
+    },
+    {
+      from: 'Sandbox',
+      to: 'Chat service B',
+      label: 'call another agent · same request ID',
+      note: 'The ID is passed through as-is. B builds its own channel name from it — sse.response:ORIG. The channel A is already listening to.',
+    },
+    {
+      from: 'Chat service B',
+      to: 'Sandbox',
+      label: 'token "print"',
+      note: 'B receives a token from the model and returns it to the sandbox, which publishes it to the channel.',
+    },
+    {
+      from: 'Sandbox',
+      to: 'Chat service B',
+      label: 'reads back what it wrote',
+      async: true,
+      note: 'B is a subscriber too. It receives the event its own answer caused, and streams that out as response. The sandbox publishes again.',
+    },
+    {
+      from: 'Sandbox',
+      to: 'Browser',
+      label: 'the same token, over and over',
+      async: true,
+      note: 'A is listening to the same channel, so every repetition goes to the browser.',
+    },
   ]}
 />
 
@@ -49,13 +81,13 @@ One writer, two readers — and one of the readers was the writer.
 
 The order in the logs shows the mechanism directly. The first token inflates on its own, and from there the whole run of tokens so far circles as one block.
 
-| Stage | What appeared on the channel |
-| --- | --- |
-| 1 | `print` × 7 |
-| 2 | `("` + 1 earlier token |
-| 3 | `Hello` + 2 earlier tokens |
-| 4 | ` World` + 3 earlier tokens |
-| 5 | `")` + 4 earlier tokens, the 5-token block repeating 38 times |
+| Stage | What appeared on the channel                                  |
+| ----- | ------------------------------------------------------------- |
+| 1     | `print` × 7                                                   |
+| 2     | `("` + 1 earlier token                                        |
+| 3     | `Hello` + 2 earlier tokens                                    |
+| 4     | ` World` + 3 earlier tokens                                   |
+| 5     | `")` + 4 earlier tokens, the 5-token block repeating 38 times |
 
 By its symptom this is a streaming bug, so the streaming code is where I looked first. Buffering, chunk boundaries, reassembly. None of it. **Duplication is not a pipe problem but a subscriber-count problem.** One writer and two readers emit twice however well the pipe is written. While you are looking at the pipe, you cannot see that.
 
@@ -98,6 +130,7 @@ The parallel case ended the same shape. When the shared parallel client builds p
 That subscription actually has one more condition on it. A request carries the name of the agent that **started** the call and the agent **currently** handling it, and it subscribes only when they match. In a nested call they should differ — and had they differed, the inner service would never have subscribed.
 
 But an empty header is **filled in with its own name, looked up from the database**. The inner call did not carry those headers, so the two values became equal. The guard disarmed itself. This bug needed both the channel name and this condition to fail at once, and both did.
+
 </Callout>
 
 ## What is still broken
