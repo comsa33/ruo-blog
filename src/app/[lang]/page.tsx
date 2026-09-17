@@ -16,7 +16,12 @@ export async function generateMetadata({
     description: site.description[lang],
     alternates: {
       canonical: `/${lang}`,
-      languages: Object.fromEntries(LANGS.map((l) => [l, `${site.url}/${l}`])),
+      languages: {
+        ...Object.fromEntries(LANGS.map((l) => [l, `${site.url}/${l}`])),
+        // Whoever matches neither gets the Korean index, which is what `/`
+        // redirects to as well.
+        'x-default': `${site.url}/ko`,
+      },
     },
   };
 }
