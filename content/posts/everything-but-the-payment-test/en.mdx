@@ -1,6 +1,6 @@
 ---
-title: 'Everything but the payment test'
-description: 'Google Play asked for the optimizer, so I turned it on. I checked login, recording and scoring. I never pressed buy. I found out ten days later, from the revenue.'
+title: 'R8 optimisation deleted the payment plugin'
+description: 'Turning on R8 as Play Console required stripped the Cordova payment plugin registry. In-app payments sat at zero for ten days; one keep rule fixed it.'
 topic: 'In-app purchase'
 date: 2026-09-11
 tags: ['R8', 'Capacitor', 'Release verification']
@@ -9,7 +9,7 @@ draft: false
 
 Most of the revenue on the OPIc speaking-practice app I run comes from store in-app purchases. Of 54 payments across the app's whole life, 40 of them — 74% — are the app. There is a payment path on the web too, but the app is the one that matters.
 
-Between September 1st and 10th, Android payments were **zero**. I found out on the night of the tenth day.
+Between September 1st and 10th, Android payments were zero. I found out on the night of the tenth day.
 
 ## They asked, so I turned it on
 
@@ -23,16 +23,16 @@ Every build succeeded. There were no warnings.
 
 After it was approved I opened the app and checked it. Login, recording, scoring, history. All fine.
 
-I did not press buy. I could have pushed it to the internal test track first, and I did not do that either. It went straight to production.
+I didn't press buy. I could have pushed it to the internal test track first, and I didn't do that either. It went straight to production.
 
-The reason is not mysterious. Most of this app's code is written and changed by an AI agent. Nothing had gone wrong before. So I assumed nothing would go wrong this time. **I assumed that about a release which changed the build configuration.**
+The reason isn't mysterious. Most of this app's code is written and changed by an AI agent. Nothing had gone wrong before. So I assumed nothing would go wrong this time. I assumed that about a release which changed the build configuration.
 
-The agent was not wrong. `minifyEnabled` and `shrinkResources` are the options Google asked for, turned on the way the documentation says to turn them on. What was wrong came after. Whoever writes the code, pressing the revenue path once before shipping is the operator's job, and I did not do it.
+The agent wasn't wrong. `minifyEnabled` and `shrinkResources` are the options Google asked for, turned on the way the documentation says to turn them on. What was wrong came after. Whoever writes the code, pressing the revenue path once before shipping is the operator's job, and I didn't do it.
 
 <Callout label="Why this release was different" accent>
 An ordinary release here changes only web code. The app loads its web layer remotely, so a web deploy reaches the app immediately and the native shell never moves. Rebuilding the app is rare.
 
-This time I **changed the native build configuration.** It was a different kind of release, and I verified it to the standard of the ordinary kind.
+This time I changed the native build configuration. It was a different kind of release, and I verified it to the standard of the ordinary kind.
 
 </Callout>
 
@@ -40,9 +40,9 @@ This time I **changed the native build configuration.** It was a different kind 
 
 Two things stacked.
 
-First, **the failure ended on the client.** A payment failure here finishes before the server is involved. If the store never initializes, products never load, and with no products the purchase request is never sent. Nothing arrives at the server at all. There was nothing for the Vercel logs or Sentry to hold.
+First, the failure ended on the client. A payment failure here finishes before the server is involved. If the store never initializes, products never load, and with no products the purchase request is never sent. Nothing arrives at the server at all. There was nothing for the Vercel logs or Sentry to hold.
 
-Second, **the error handler filed real errors as user cancellations.** Three plugin error codes were bundled together as the cancel family and quietly swallowed.
+Second, the error handler filed real errors as user cancellations. Three plugin error codes were bundled together as the cancel family and quietly swallowed.
 
 ```
 6777001  ERR_SETUP      store init failed     → treated as cancelled
@@ -58,19 +58,19 @@ An SEO effort started two months earlier had begun to land. Desktop traffic was 
 
 So the dashboard did not look wrong. It read like the payment channel had shifted to the web.
 
-**The web growth was real and the app collapse was real.** They overlapped in the same window, so the total looked healthy. The reason one rose and the reason the other vanished had nothing to do with each other.
+The web growth was real and the app collapse was real. They overlapped in the same window, so the total looked healthy. The reason one rose and the reason the other vanished had nothing to do with each other.
 
 In the end the same data is what exposed it. On the night of September 10th, while looking at the web's share of payments, one question was left over. Why is there not a single Android payment, when there is always a steady trickle?
 
-I took out my phone and pressed buy. It stopped at "Processing…". Leaving and coming back produced a message saying the product information could not be loaded — and **it told me to check App Store Connect.** An iOS message, on Android.
+I took out my phone and pressed buy. It stopped at "Processing…". Leaving and coming back produced a message saying the product information could not be loaded — and it told me to check App Store Connect. An iOS message, on Android.
 
 ## Wrong three times, right on the fourth
 
 R8 leaves a record of what it deleted: `mapping/release/usage.txt`.
 
-**First attempt.** The payment callbacks were gone. The product-details response callback, a constants class in its entirety, several `BillingClient` builder methods. A Cordova plugin is found by string and called only through interface callbacks, so it never appears in R8's reference graph. I added keep rules. **Still broken.**
+First attempt. The payment callbacks were gone. The product-details response callback, a constants class in its entirety, several `BillingClient` builder methods. A Cordova plugin is found by string and called only through interface callbacks, so it never appears in R8's reference graph. I added keep rules. Still broken.
 
-**Second attempt.** Looking wider, it was not only the plugin. All of `org.apache.cordova` had been cut, and the bridge class that carries JS calls into native was gone entirely. I had protected the plugin and left the framework unprotected. With the framework kept too, removals dropped from 98 to 9. **Still broken.**
+Second attempt. Looking wider, it was not only the plugin. All of `org.apache.cordova` had been cut, and the bridge class that carries JS calls into native was gone entirely. I had protected the plugin and left the framework unprotected. With the framework kept too, removals dropped from 98 to 9. Still broken.
 
 At this point I deployed instrumentation on every failure point, and for the first time got values back.
 
@@ -79,9 +79,9 @@ At this point I deployed instrumentation on every failure point, and for the fir
 [IAP] product_not_found  registered: 0     ← 3ms later
 ```
 
-Three milliseconds. And logcat had **not one line** of `BillingClient` output. The native call was never leaving the building.
+Three milliseconds. And logcat had not one line of `BillingClient` output. The native call was never leaving the building.
 
-**Third attempt.** I stopped guessing and opened the app itself. Web debugging enabled on the release build, attached over the DevTools protocol, and initialization run by hand down the same path the app takes.
+Third attempt. I stopped guessing and opened the app itself. Web debugging enabled on the release build, attached over the DevTools protocol, and initialization run by hand down the same path the app takes.
 
 ```
 code: 6777001
@@ -98,7 +98,7 @@ org.apache.cordova.ExposedJsApi      present
 res/xml/config.xml                   missing
 ```
 
-It was not a class that was missing. It was the **registry**.
+**It was not a class that was missing — it was the registry.**
 
 ## There were two causes
 
@@ -171,9 +171,9 @@ It was not a class that was missing. It was the **registry**.
 | Resource shrinking | Sep 1   | The plugin registry, `res/xml/config.xml`     |
 | Code shrinking     | Aug 31  | Payment callbacks, the Cordova bridge classes |
 
-**Both produce the same symptom.** It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I made two correct fixes while believing both were wrong.
+Both produce the same symptom. It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I made two correct fixes while believing both were wrong.
 
-When the first fix is logically right and the symptom does not move, suspect a second cause before abandoning the hypothesis.
+When the first fix is logically right and the symptom doesn't move, I think the thing to try is suspecting a second cause before abandoning the hypothesis.
 
 ## The fix
 
@@ -201,7 +201,7 @@ The error classification lost two entries.
 const userCancelCodes = [6777006];
 ```
 
-Then an event and a Sentry message on nine failure points: plugin missing, init timeout, product not found, verification failed. **Next time this path dies, an alert says so before the revenue does.**
+Then an event and a Sentry message on nine failure points: plugin missing, init timeout, product not found, verification failed. Next time this path dies, an alert says so before the revenue does.
 
 On the same phone, initialization finished in 1.1 seconds and four products came back. It went to production at 23:41 on September 10th.
 
@@ -222,14 +222,12 @@ adb logcat | grep "D/CdvPurchase"
 
 ## What is still open
 
-**The loss itself is small.** Eleven app payments in August, 69,300 KRW, became zero in September. The problem is not the amount. It is that one revenue path was 100% dead and for ten days no instrument mentioned it.
+The loss itself is small. Eleven app payments in August, 69,300 KRW, became zero in September. It isn't the amount I mind. One revenue path was 100% dead and for ten days no instrument mentioned it.
 
-**I will never know how many people tried and gave up.** The failures never reached the server, so there is no data to count. How many pressed buy, watched "Processing…", and deleted the app is unobservable.
+I will never know how many people tried and gave up. The failures never reached the server, so there is no data to count. How many pressed buy, watched "Processing…", and deleted the app is unobservable.
 
-**Handing an AI your code and handing it your verification are different acts.** This is the biggest thing I took from it. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. Whoever writes the code, **deciding what to verify before shipping is not delegable.**
+The part that sticks with me is this one. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. There was a store deadline pushing too, and a release with a deadline is exactly the one that should go through the internal test track, but the judgement went the other way. Whoever writes the code, **deciding what to verify before shipping isn't something you can hand over.**
 
-**Being rushed erased the procedure.** There was a store deadline. That is a reason and not an excuse. A release with a deadline is exactly the one that should go through the internal test track, and the judgement went the other way.
+A web app in a native wrapper needs one more layer of attention. Capacitor's own plugins ship their keep rules with the library, so they are protected. Cordova-compatible plugins aren't. Normally only the web is deployed, so it is easy to forget that layer exists at all — until the day the native build is touched and the whole bill arrives at once.
 
-**A web app in a native wrapper needs one more layer of attention.** Capacitor's own plugins ship their keep rules with the library, so they are protected. Cordova-compatible plugins are not. Normally only the web is deployed, so it is easy to forget that layer exists at all — until the day the native build is touched and the whole bill arrives at once.
-
-**It has not been a full day yet.** On a real device I have confirmed initialization and product lookup. I have not yet seen a payment from an actual user come back. Calling it fixed takes a few more days of watching.
+It hasn't been a full day yet. On a real device I've confirmed initialization and product lookup. I haven't yet seen a payment from an actual user come back. Calling it fixed takes a few more days of watching.

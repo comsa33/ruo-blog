@@ -1,26 +1,26 @@
 ---
-title: 'Taking on 13,000 lines of someone else’s code'
-description: 'It could not be a dependency and it could not be a fork. I picked the third option, and the price was a set of rules with no exceptions.'
+title: 'Why we vendored 13,000 lines of open source'
+description: 'Neither a dependency nor a fork worked, so we vendored. The price is a discipline: no formatter over that tree, commits kept separate, and what we cannot fix written down.'
 topic: 'Agent memory'
 date: 2026-09-05
 tags: ['open source', 'technical debt', 'design']
 ---
 
-The storage and retrieval engine behind the memory service was not written here. It came from an open-source library. But as described in [the first post](/en/examples-beat-instructions), that library's extraction prompt had to be changed — Korean conversations were being extracted into English.
+The storage and retrieval engine behind the memory service wasn't written here. It came from an open-source library. But as described in [the first post](/en/examples-beat-instructions), that library's extraction prompt had to be changed — Korean conversations were being extracted into English.
 
 That is where the choice appears.
 
 ## Three roads
 
-| Option              | Our changes | Upstream updates     | Diffability      |
-| ------------------- | ----------- | -------------------- | ---------------- |
-| Use as a dependency | impossible  | automatic            | not needed       |
-| Fork                | free        | cherry-pick required | blurs quickly    |
-| **Vendor**          | free        | selective            | **maintainable** |
+| Option              | Our changes | Upstream updates     | Diffability   |
+| ------------------- | ----------- | -------------------- | ------------- |
+| Use as a dependency | impossible  | automatic            | not needed    |
+| Fork                | free        | cherry-pick required | blurs quickly |
+| Vendor              | free        | selective            | maintainable  |
 
-As a dependency the prompt cannot be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
+As a dependency the prompt can't be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
 
-I took the third. Pull the code into the repository wholesale, but keep it in a state where **a diff against the original is always possible.**
+I took the third. Pull the code into the repository wholesale, but keep it in a state where a diff against the original is always possible.
 
 <Metrics>
   <Metric value="13,000 lines" label="code brought in" />
@@ -30,13 +30,13 @@ I took the third. Pull the code into the repository wholesale, but keep it in a 
 
 ## The price is discipline
 
-Vendoring is not copying. Copying is easy; keeping it is not. What makes it keepable is following a few rules without exception.
+Vendoring isn't copying. Copying is easy; keeping it isn't. What makes it keepable is following a few rules without exception.
 
-**No formatter touches it.** Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. That is a rule, not laziness.
+No formatter touches it. Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. It looks like laziness; it's the rule.
 
-**Every changed line carries a comment saying why.** When comparing against upstream later, that comment is the only clue. An uncommented change reads to the next person as "I guess the original was like that."
+Every changed line carries a comment saying why. When comparing against upstream later, that comment is the only clue. An uncommented change reads to the next person as "I guess the original was like that."
 
-**The import is split into three commits.** This is the crux.
+The import is split into three commits. This is the crux.
 
 <Sequence
   caption="Bringing vendored code in"
@@ -111,9 +111,9 @@ Then you open it.
   ]}
 />
 
-Which is **the same thing** we already do by handing sync code to a thread pool. The only difference is whether you hand over a whole request or one call at a time.
+Which is the same thing we already do by handing sync code to a thread pool. The only difference is whether you hand over a whole request or one call at a time.
 
-Switching would gain essentially nothing and cost something specific: **maintaining our changes twice.** Eighteen modifications live on the sync path; all of them would have to be duplicated and kept in step.
+Switching would gain essentially nothing and cost something specific: maintaining our changes twice. Eighteen modifications live on the sync path; all of them would have to be duplicated and kept in step.
 
 And the real bottleneck was elsewhere.
 
@@ -132,24 +132,24 @@ And the real bottleneck was elsewhere.
 
 This one still makes me slightly uneasy.
 
-Version 2 of the library contains an undocumented **entity linking** feature. It extracts entities from memory sentences, embeds them into a separate table, and boosts memories sharing an entity at search time. A reasonable feature.
+Version 2 of the library contains an undocumented entity linking feature. It extracts entities from memory sentences, embeds them into a separate table, and boosts memories sharing an entity at search time. A reasonable feature.
 
 <Callout label="There is no switch" accent>
-Nothing turns it on or off. It activates **automatically** if a morphological analysis library happens to be installed. It is dormant here only because that library is absent.
+Nothing turns it on or off. It activates automatically if a morphological analysis library happens to be installed. It is dormant here only because that library is absent.
 
 The moment somebody adds it as a dependency for a completely unrelated reason, an entity table appears and every ingest starts paying for entity embeddings — with no code change at all.
 
 </Callout>
 
-It is also close to useless for Korean. The model is hardcoded for English, and the check for whether a token is a name is **whether its first character is uppercase.** Korean has no uppercase, so nothing ever qualifies. Turned on, it costs and does nothing.
+It is also close to useless for Korean. The model is hardcoded for English, and the check for whether a token is a name is whether its first character is uppercase. Korean has no uppercase, so nothing ever qualifies. Turned on, it costs and does nothing.
 
-It could be fixed — swap the model, rewrite the capitalisation test and the English stopword filter. But that collides head-on with "keep our diff minimal". So it was not fixed; it was **written down.** The best available move is to tell the next person where the mine is.
+It could be fixed — swap the model, rewrite the capitalisation test and the English stopword filter. But that collides head-on with "keep our diff minimal". So it was not fixed; it was written down. The best available move is to tell the next person where the mine is.
 
 ### Config keys that are silently ignored
 
 Pass a wrong key name to the config object and nothing is raised. It is ignored.
 
-- The database connection string is not `dsn` but another name. Get it wrong and it does not fail to connect — it **falls back to a default, quietly**
+- The database connection string is not `dsn` but another name. Get it wrong and it does not fail to connect — it falls back to a default, quietly
 - Point the history store at the wrong path and it drops to a local file database instead of PostgreSQL. No log
 - The graph config from v1 no longer exists in v2, but passing it raises nothing. It is ignored
 
@@ -159,14 +159,14 @@ All of it the same character described in [the previous post](/en/failures-that-
 
 The delete path is not atomic. Removing the vector row, writing the history entry and cleaning up run in sequence on separate connections with no transaction. If the first commits and the rest fail, you get a memory that is gone with no record of its deletion.
 
-The vendored code was not restructured to be atomic. That would explode the diff, which undermines the premise of the whole strategy. Instead there is **a compensating layer outside it** — backfilling missing history, sweeping rows left orphaned.
+The vendored code was not restructured to be atomic. That would explode the diff, which undermines the premise of the whole strategy. Instead there is a compensating layer outside it — backfilling missing history, sweeping rows left orphaned.
 
 It is not clean. But it is deliberate debt: replace the engine and the compensating layer disappears with it. Carrying it until then beats tearing up the vendored code and losing the ability to diff.
 
 ## What is left
 
-**Vendoring is not copying code, it is the discipline of staying diffable.** Keeping formatters off and splitting the commits is not fastidiousness; it is the minimum condition for the strategy to work at all. Break it once and what you have is a fork.
+**Vendoring is not copying code, it is the discipline of staying diffable.** Keeping formatters off and splitting the commits looks fastidious, but it is the minimum condition for the strategy to work at all. Break it once and what you have is a fork.
 
-**Being forced to read someone else's code teaches you things.** That the async class is async in name only, that config keys are silently ignored, that a feature hides behind an implicit switch — all of it came from reading. As a dependency all three would have stayed unknown until they became incidents.
+Being forced to read someone else's code teaches you things. That the async class is async in name only, that config keys are silently ignored, that a feature hides behind an implicit switch — all of it came from reading. As a dependency all three would have stayed unknown until they became incidents.
 
-**What you cannot fix, document.** Entity linking is useless for Korean and we cannot fix it. What we could do is write down the condition that activates it and what happens when it does. If you cannot clear the mine, at least mark it.
+What you cannot fix, document. Entity linking is useless for Korean and we cannot fix it. What we could do is write down the condition that activates it and what happens when it does. If you cannot clear the mine, at least mark it.

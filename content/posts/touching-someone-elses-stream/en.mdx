@@ -1,6 +1,6 @@
 ---
-title: 'We decided to touch someone else’s stream'
-description: 'The same ten lines changed five times in one day. The version that lost nothing was the one deleted after seventeen minutes.'
+title: 'Five fixes to SSE frame parsing in one day'
+description: 'The same ten lines were rewritten five times in 24 hours. The version that lost nothing was the first one, deleted after 17 minutes — the code lived inside a generated template string.'
 topic: 'Dynamic execution engine'
 date: 2025-12-12
 tags: ['SSE', 'Streaming', 'Code generation']
@@ -11,7 +11,7 @@ There is one promise we made when integrating external model providers: whicheve
 
 Provider SSE payloads differ from each other. Field names differ, nesting depth differs, termination signals differ. Keeping the promise means opening each event as the stream passes and rewriting it into our shape.
 
-**From that moment we are not a relay. We are a parser.** This post is about what that costs.
+The moment it does that, this layer stops being a relay and becomes a parser. This post is about what that costs.
 
 ## Ten lines, twenty-four hours, five versions
 
@@ -78,25 +78,25 @@ Every commit message says "improved". None says what broke or how. So I lifted e
   ]}
 />
 
-Of the four, exactly one loses nothing: **raw passthrough.** And it was deleted after seventeen minutes.
+Of the four, exactly one loses nothing: raw passthrough. And it was deleted after seventeen minutes.
 
-## Why we did not go back to passthrough
+## Why we didn't go back to passthrough
 
 That was the question I most wanted answered. A lossless implementation was right there. Why return to parsing?
 
 The answer is in today's code. The final implementation pulls each event apart, remaps it into the gateway's common shape, filters out the termination sentinel, and blanks a field for certain event types.
 
-So **raw passthrough loses nothing precisely because it changes nothing.** But the reason this system exists was to make differently-shaped providers look the same. Forwarding untouched and normalising the shape cannot both hold.
+So raw passthrough loses nothing precisely because it changes nothing. But the reason this system exists was to make differently-shaped providers look the same. I don't think forwarding untouched and normalising the shape can hold at the same time.
 
 <Callout label="What the seventeen-minute version showed" accent>
-  That version was not a wrong choice. It was **a different product.** Keeping it would have made us
-  a transparent proxy and pushed the job of absorbing provider differences onto every client. What
-  cannot be undone is not the code — it is that promise.
+  That version was less a wrong choice than a different product, I think. Keeping it would have made
+  us a transparent proxy and pushed the job of absorbing provider differences onto every client. The
+  code could always be undone. The promise is the part that couldn't.
 </Callout>
 
 ## Why ten lines are not ten lines
 
-To understand why this code was touched five times in a day you have to see where it lives. It is not code the server runs. It is **code the server writes.**
+To understand why this code was touched five times in a day you have to see where it lives. **It is not code the server runs — it is code the server writes.**
 
 <Structure
   hint="Hover a node to keep only what it connects to"
@@ -108,7 +108,7 @@ To understand why this code was touched five times in a day you have to see wher
       col: 0,
       row: 0,
       accent: true,
-      note: 'The relay logic sits here inside a string. That is why the braces are doubled — this file is not executed code, it is a mould that stamps out code.',
+      note: 'The relay logic sits here inside a string. That is why the braces are doubled — this file is never executed. It is a mould that stamps out code.',
     },
     {
       id: 'gen',
@@ -145,9 +145,9 @@ To understand why this code was touched five times in a day you have to see wher
 
 Two things follow.
 
-First, **a bug in the template has already been copied into every deployed provider.** Fixing the template fixes nothing by itself; every generated file has to be stamped again. That is why a maintenance endpoint exists for exactly that job.
+First, a bug in the template has already been copied into every deployed provider. **Fixing the template fixes nothing by itself;** every generated file has to be stamped again. That is why a maintenance endpoint exists for exactly that job.
 
-Second, **this code is hard to step through.** It lives inside a string, so the editor does not check its syntax, there is no completion, and there is one extra layer of escaping. Whether `"\n\n"` counts as two characters or four is precisely the confusion that produced the 15:20 bug, and it came from that extra layer.
+Second, this code is hard to step through. It lives inside a string, so the editor doesn't check its syntax, there is no completion, and there is one extra layer of escaping. Whether `"\n\n"` counts as two characters or four is precisely the confusion that produced the 15:20 bug, and it came from that extra layer.
 
 ## Where it stands now
 
@@ -157,8 +157,8 @@ One loss was repaired too. Comment frames beginning with a colon are forwarded v
 
 ## What is still open
 
-**Frames carrying only `event:` and `id:` are still dropped.** The final implementation handles frames that have `data`, and otherwise only checks whether the frame is a comment. A frame that is neither reaches nobody. The loss introduced on the morning of 5 August is still there. Nobody has noticed because the providers currently attached do not send such frames.
+Frames carrying only `event:` and `id:` are still dropped. The final implementation handles frames that have `data`, and otherwise only checks whether the frame is a comment. A frame that is neither reaches nobody. The loss introduced on the morning of 5 August is still there. Nobody has noticed because the providers currently attached don't send such frames.
 
-**The commit messages recorded no symptoms.** All five say "improved". Nothing about what broke, nothing about why it was reverted. To write this post I had to lift the four versions out and run them again. What I needed four months later was not "improved" — it was **"this cuts off two characters."**
+The commit messages recorded no symptoms. All five say "improved". Nothing about what broke, nothing about why it was reverted. To write this post I had to lift the four versions out and run them again. What I needed four months later was "this cuts off two characters".
 
-**Changing it five times in a day means there was no way to check between deploys.** Twenty lines that feed one stream in and compare what comes out would have caught the 15:20 bug before it was committed. I wrote that check for the first time while writing this post. The order should have been the other way round.
+Changing it five times in a day means there was no way to check between deploys. Twenty lines that feed one stream in and compare what comes out would have caught the 15:20 bug before it was committed. I wrote that check for the first time while writing this post. The order should have been the other way round.

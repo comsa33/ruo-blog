@@ -243,16 +243,132 @@ Taken from `interfaces.rauno.me`:
 
 ### Voice
 
-Korean is primary; English is a real translation, not a summary. Both are
-written in **plain declarative sentences**. Short. No marketing register, no
-emoji, no exclamation marks.
+**The author's own voice is specified in the `my-writing-style` skill. Load it
+before drafting. Section 3 (기술 회고·개발 일지) is the register these posts use.**
+What follows is the blog-specific part; the skill wins on anything it covers.
 
-Structure a `note` as a problem the reader can feel, then the reasoning, then the
-measurement, then what is still broken. **Admitting what was not solved is
-required** — it is what separates this from a release announcement.
+Korean is primary; English is a real translation, not a summary. Both are plain
+declarative. No marketing register, no emoji, no exclamation marks.
+
+Sentence length varies. Mix long sentences with short ones — an earlier version
+of this file said "Short." and the result was thirteen posts with an identical
+machine rhythm. A paragraph of uniformly clipped sentences does not read as
+restraint, it reads as generated.
 
 Lead with the decision, not the technology. "Why it was decided this way" is the
 product; the code is not.
+
+#### Write in the order it happened
+
+Not in the order that makes it tidy. Dead ends stay dead ends; do not compress
+four attempts into "three options, one discarded". The reader is following
+someone who did not yet know the answer.
+
+#### Admit what was not solved — but not in the same place every time
+
+This is required, and it is what separates a post from a release announcement.
+It is **not** required to be a closing `## 남은 것` section with bolded paragraph
+openers. Twelve of the first thirteen posts ended that way and the shape became
+a form to fill in.
+
+What became a form was the shape, not the label. `## 남은 것` repeating across
+posts is fine — it is a section label, like `Limitations` in a paper, and a
+reader scanning for what is still broken should find it where they expect. Do
+not rename it to something evocative; a heading that does not say what is under
+it is worse than a repetitive one. Vary instead whether the section exists at
+all: on some posts fold the unresolved parts into the body where they come up,
+or give them one closing paragraph with no heading.
+
+#### Budgets
+
+These exist because a drafting agent will otherwise repeat a good device until
+it is wallpaper.
+
+| Device                                     | Limit per post                                 |
+| ------------------------------------------ | ---------------------------------------------- |
+| `**bold**`                                 | 3. Never to open a paragraph.                  |
+| "A가 아니라 B다" aphorism                  | 1. Not once per section.                       |
+| Hedged endings (`~듯하다` `~같다` `~더라`) | several — do not end everything as a certainty |
+
+#### Say who worked it out, when it mattered
+
+Much of this work is done with an agent, and the first thirteen posts were
+written as if it were not — every diagnosis reads as the author's own. Do not
+credit the agent as a matter of routine; a footnote on every post is its own
+pattern. Name it at the points where **the division of judgement is part of the
+story**: the agent supplied an answer and the author took it without checking,
+or doubted it and was wrong to, or the author shipped something an agent wrote
+and did not verify it.
+
+Written that way it earns its place, because it explains something the post
+otherwise has to assert:
+
+> 이것도 내가 알아낸 건 아니다. 찍힌 바이트를 그대로 클로드 코드에 던졌더니 fragmented MP4 의
+> 조각 박스라고 알려줬고, `moof` 라는 이름은 그때 처음 들었다. (…) 미디어 컨테이너는 내 분야가
+> 아니다.
+
+That last line is why the section's conclusion holds. Everyday help that changed
+no judgement stays out of the post.
+
+This also unblocks the "I did not understand this" admission the budgets ask
+for. Outside one's own field there is usually a real one available, and
+inventing a different kind of admission to avoid naming the agent produces the
+false modesty that admits a lapse of process while keeping the credit.
+
+#### English
+
+There is no sample of the author writing technical prose in English, so `en.mdx`
+is not an impersonation — it is the same post performing the same moves in
+natural English. Translate the rhetoric, not the words.
+
+**The budgets above apply to `en.mdx` independently.** The first thirteen posts
+had exactly 207 bolds in Korean and exactly 207 in English, because the English
+was a mirror. If one language is cut and the other is not, they drift apart.
+Count them separately.
+
+**Hedges must survive translation.** This is where a drafting agent does the most
+damage: Korean uncertainty gets flattened into English certainty and the author
+ends up sounding like he knew all along.
+
+| Korean                       | English                                          |
+| ---------------------------- | ------------------------------------------------ |
+| `~인 것 같다` / `~인 듯하다` | "I think", "it seems", "my guess is"             |
+| `~더라`                      | "turns out", "as it happens", "I found that"     |
+| `~아닐까라는 의심이 들었다`  | "I started to suspect"                           |
+| `~믿고 싶다`                 | "I would like to believe"                        |
+| `아직 모른다`                | "I still do not know" — not "it remains unclear" |
+
+Whatever emotion and admission the Korean carries, carry it across. An English
+draft that is calmer than its Korean original is a failed translation.
+
+Contractions are allowed and preferred where they fall naturally — "I can't say
+it's fixed yet" over "I cannot yet say it is fixed". The formal register is not
+restraint here, it is stiffness.
+
+Do not add English idiom the author would not reach for, and do not translate a
+Korean title word for word. Translate what the title does.
+
+#### Do not supply what the record does not hold
+
+Emotion and an admission of not having understood something are real features of
+this author's writing, and where the record carries them they belong in the
+post. They are not a quota. A drafting agent has no access to how a day actually
+felt, and inventing it produces sentences that are wrong in a way the author has
+to catch one by one — which is what happened the first time this was tried.
+
+Write what the notes, the logs and the commits support. Leave the rest out.
+
+#### Titles
+
+Do not reuse the grammar of the previous three posts. The first thirteen ran
+nine first-person past-tense self-deprecating sentences in a row.
+
+Vary it without going vague. The author's own tech-blog titles name their
+subject outright (`중심극한정리(CLT) | ft. python`, `🛠 ETL과 ELT의 차이`), so a
+plain descriptive title is always in register; so is a noun phrase built from
+the most concrete piece of evidence in the post (`moof 로 시작하는 파일`).
+Metaphor is not — a title the reader cannot decode is a worse failure than a
+repetitive one.
 
 ### Anonymising company projects
 
