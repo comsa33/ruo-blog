@@ -27,15 +27,21 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const post = getPost(slug, lang);
   if (!post) return {};
 
+  const available = getAvailableLangs(slug);
+  // Korean is the site's default, but a post that only exists in one language
+  // has to point x-default at the version that is actually there.
+  const fallback = available.includes('ko') ? 'ko' : available[0];
+
   return {
     title: post.title,
     description: post.description,
     alternates: {
       canonical: `/${lang}/${slug}`,
       // Without these the two translations look like duplicates of each other.
-      languages: Object.fromEntries(
-        getAvailableLangs(slug).map((l) => [l, `${site.url}/${l}/${slug}`]),
-      ),
+      languages: {
+        ...Object.fromEntries(available.map((l) => [l, `${site.url}/${l}/${slug}`])),
+        'x-default': `${site.url}/${fallback}/${slug}`,
+      },
     },
     openGraph: {
       type: 'article',
