@@ -139,6 +139,14 @@ into "back to top" once the end is reached. Labels live in `src/lib/site.ts`.
 `<Compare>` before/after bars · `<Metrics>` + `<Metric>` headline numbers ·
 `<Callout>` aside · `<Term>` inline jargon tooltip · `<Figure>` image + caption
 
+### Tildes in prose are strikethrough
+
+GFM treats a single-tilde pair as `<del>`. Two ranges in one paragraph —
+`69~73 이었는데 … 35~50 이었다` — render as `69` ~~73 이었는데 … 35~~ `50`,
+with the numbers swallowed. Escape every `~` in prose as `\~`. Component
+attributes and code spans are safe; a table cell is a paragraph of its own,
+so one range per cell is fine and two are not.
+
 ### Critical constraint: no functions across the RSC boundary
 
 MDX renders on the server; these components are client components. **A function
