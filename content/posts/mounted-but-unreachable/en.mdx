@@ -20,13 +20,13 @@ Everything we could check looked fine. The console showed the agent as deployed,
 POST /agent/api/a10/test   -> 200
 ```
 
-## It was not the gateway
+## It wasn't the gateway
 
-The first suspect for a 404 is always the edge. A bad routing rule, an ingress that cannot resolve the path.
+The first suspect for a 404 is always the edge. A bad routing rule, an ingress that can't resolve the path.
 
 Two things ruled that out. First, the request appeared in the pod log. Response time 24ms. It had passed the edge and reached the application. Second, the response body was `{"detail":"Not Found"}` — not our response envelope, but FastAPI's default 404 format.
 
-So the app received the request, and the app said it could not find the route. The route was registered.
+So the app received the request, and the app said it couldn't find the route. The route was registered.
 
 ## Mounts match by prefix
 
@@ -131,7 +131,7 @@ c.post("/api/v2/a1/main")  # 404
   ]}
 />
 
-This is where the real nature of the bug shows. The correct answer depends on mount order. And mount order comes from the order in which a restarting pod restores deployment state. That order is not guaranteed.
+This is where the real nature of the bug shows. The correct answer depends on mount order. And mount order comes from the order in which a restarting pod restores deployment state. That order isn't guaranteed.
 
 <Callout label="A bug that disappears on restart" accent>
   Restarting the pod can make the symptom go away, and the next restart can bring it back. This is

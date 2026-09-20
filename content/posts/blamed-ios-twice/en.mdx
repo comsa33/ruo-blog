@@ -15,7 +15,7 @@ On 8 September a new user failed analysis five times in a row, starting three mi
 
 There were two failures in the log and both were iOS. 18.7 and 18.7.1.
 
-A plausible hypothesis formed immediately. `MediaRecorder` on iOS Safari is notorious for its container support. We were recording webm, so I thought maybe something in iOS 18 was producing a file the model couldn't read.
+A plausible hypothesis formed immediately. `MediaRecorder` on iOS Safari isn'torious for its container support. We were recording webm, so I thought maybe something in iOS 18 was producing a file the model couldn't read.
 
 So I detected iOS 18 and switched it to record mp4. Safari on iPad pretends to be a Mac and plain iOS detection doesn't work, so I added iPad desktop-mode detection along the way.
 

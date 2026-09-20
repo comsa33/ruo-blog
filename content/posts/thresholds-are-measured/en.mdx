@@ -75,9 +75,9 @@ Two thresholds are needed: one for merging duplicates within a category, another
 
 We started at 0.9, on the theory that a high bar is a safe bar.
 
-Production disagreed immediately. A user corrected their moving date to December, and the stale "November" memory kept coming back as the top search result. The correction had not failed to save; both were alive, and the stale one simply retrieved better.
+Production disagreed immediately. A user corrected their moving date to December, and the stale "November" memory kept coming back as the top search result. The correction hadn't failed to save; both were alive, and the stale one simply retrieved better.
 
-A high threshold is not safe. It means wrong memories live longer.
+A high threshold isn't safe. It means wrong memories live longer.
 
 ## So we measured
 
@@ -119,7 +119,7 @@ Press 0.80 and two of the four added-detail pairs get overwritten. Push to 0.90 
 
 ## The margins are deliberately uneven
 
-0.85 was not picked for being in the middle. The two directions of failure do not cost the same.
+0.85 wasn't picked for being in the middle. The two directions of failure don't cost the same.
 
 <Metrics>
   <Metric value="+0.22" label="margin to different facts. Overwriting one destroys it" />
@@ -184,9 +184,9 @@ Measuring surfaced a region no threshold reaches.
   ]}
 />
 
-Same kind of correction: caught when the frame is preserved, missed when it is not. Lowering the threshold does not fix this — going lower starts overwriting genuinely different facts.
+Same kind of correction: caught when the frame is preserved, missed when it isn't. Lowering the threshold doesn't fix this — going lower starts overwriting genuinely different facts.
 
-This region is not a similarity problem; it is a question similarity cannot be asked. The answer is to let the model name the memory it is replacing, not to tune a number. The real yield of the measurement was not 0.85, but knowing the boundary of where 0.85 stops applying.
+This region isn't a similarity problem; it is a question similarity can't be asked. The answer is to let the model name the memory it is replacing, not to tune a number. The real yield of the measurement wasn't 0.85, but knowing the boundary of where 0.85 stops applying.
 
 ## On the read path we dropped thresholds entirely
 
@@ -205,7 +205,7 @@ The measurement said otherwise.
   note="Cutting made it worse. The cause: <strong>score scale differs by query type.</strong> A topical query's top hit scored 0.397; a personal-fact query's top hit scored 0.092. Put them on one axis and the personal-fact side loses its correct answers first."
 />
 
-Embedding scores are not absolute. The same 0.3 is a top hit for one query and noise for another. On the write path two sentences are compared directly, so the value means something; in search the axis moves with every query.
+Embedding scores aren't absolute. The same 0.3 is a top hit for one query and noise for another. On the write path two sentences are compared directly, so the value means something; in search the axis moves with every query.
 
 So search has no absolute threshold, only ordering. Narrowing is done with conditions instead of scores.
 
@@ -220,13 +220,13 @@ So search has no absolute threshold, only ordering. Narrowing is done with condi
   note="<strong>+20%p.</strong> The scope filter was there as a security boundary; it turned out to be a retrieval-quality device too. Removing what is definitely wrong beats cutting by score."
 />
 
-## What this does not prove
+## What this doesn't prove
 
 Stated plainly.
 
-It is not a significance test. It is decision-support: does the empirical distribution of real pairs separate? Embeddings are deterministic, so the same pair always scores the same. Repeating the measurement means nothing, and there is exactly one source of uncertainty — whether this sample represents the population.
+It isn't a significance test. It is decision-support: does the empirical distribution of real pairs separate? Embeddings are deterministic, so the same pair always scores the same. Repeating the measurement means nothing, and there is exactly one source of uncertainty — whether this sample represents the population.
 
-One of the protected groups is thin. Added-detail has four pairs. That shape of memory is genuinely rare in the corpus and a second mining pass could not grow it. The 0.006 margin cannot be tightened with sampling. It has to be corrected against the score distribution in production logs, and frequent hits near 0.85 are the signal to raise the line.
+One of the protected groups is thin. Added-detail has four pairs. That shape of memory is genuinely rare in the corpus and a second mining pass couldn't grow it. The 0.006 margin can't be tightened with sampling. It has to be corrected against the score distribution in production logs, and frequent hits near 0.85 are the signal to raise the line.
 
 The domain is narrow. The pairs come from three work personas. Sentence shapes from other domains were never measured.
 
@@ -238,4 +238,4 @@ Decide the cost of failing in each direction first. Once you know which way it h
 
 The yield of measuring is a boundary, not a number. Learning that reframed corrections escape every threshold was worth more than arriving at 0.85. Knowing where something stops working tells you where to build something else.
 
-The same instrument inverts in a different position. The absolute threshold that worked for writing cut the correct answers first in search. A fixed axis and an axis that moves per query are not the same problem.
+The same instrument inverts in a different position. The absolute threshold that worked for writing cut the correct answers first in search. A fixed axis and an axis that moves per query aren't the same problem.

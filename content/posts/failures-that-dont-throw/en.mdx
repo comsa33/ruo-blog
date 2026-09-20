@@ -56,7 +56,7 @@ The vector store's connection pool had no check before handing a connection out.
   ]}
 />
 
-The design was right. You cannot drop a conversation because memory lookup failed. The problem was that the swallowed failure was reported nowhere. An empty array and "a user with no memories" were indistinguishable.
+The design was right. You can't drop a conversation because memory lookup failed. The problem was that the swallowed failure was reported nowhere. An empty array and "a user with no memories" were indistinguishable.
 
 The fix was two lines: a pre-borrow check on the pool, and a signal for the swallowed failure that is distinct from an empty result.
 
@@ -87,7 +87,7 @@ To exclude the current conversation from search results I added a `$not` conditi
   ]}
 />
 
-`NOT NULL` is not `TRUE`, it is `NULL`. Obvious to anyone who remembers, and a few days for anyone who does not. The dangerous part is that the condition raises nothing. The query succeeds and the result set quietly shrinks.
+`NOT NULL` isn't `TRUE`, it is `NULL`. Obvious to anyone who remembers, and a few days for anyone who doesn't. The dangerous part is that the condition raises nothing. The query succeeds and the result set quietly shrinks.
 
 Wrapped it in `COALESCE(NOT (…), TRUE)`, and made the field non-optional in the first place by requiring a category on automatically ingested rows too.
 
@@ -142,12 +142,12 @@ Bugs that raise are easy. A stack trace names the line, an alert fires, it repro
 
 Four of the six were caught while still unreleased, by reading the code rather than by an incident.
 
-After release each would have needed a data migration. String timestamps mean converting a ledger that already exists, and the UTC reference date has no way back at all. No way back is the point: a memory that stored "tomorrow" a day early is not recovered by fixing the timezone later.
+After release each would have needed a data migration. String timestamps mean converting a ledger that already exists, and the UTC reference date has no way back at all. No way back is the point: a memory that stored "tomorrow" a day early isn't recovered by fixing the timezone later.
 
 ## What is left
 
-To avoid silent failure, "none" and "could not fetch" must be different values. Express both as an empty array and an outage disguises itself as a normal response. That is a type problem, not a logging problem.
+To avoid silent failure, "none" and "couldn't fetch" must be different values. Express both as an empty array and an outage disguises itself as a normal response. That is a type problem, not a logging problem.
 
-Correctness that depends on configuration is not correctness. Code that is only right when the pod timezone is set carries the burden of verifying that setting forever. If it can be pinned as a constant, pin it.
+Correctness that depends on configuration isn't correctness. Code that is only right when the pod timezone is set carries the burden of verifying that setting forever. If it can be pinned as a constant, pin it.
 
 Three-valued logic only bites when forgotten. That `NOT NULL` is `NULL` is known to everyone who knows SQL, which is exactly why nobody raises it in review. Knowing something and recalling it at the right moment are different skills.

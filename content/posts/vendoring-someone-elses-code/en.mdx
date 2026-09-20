@@ -6,7 +6,7 @@ date: 2026-09-05
 tags: ['open source', 'technical debt', 'design']
 ---
 
-The storage and retrieval engine behind the memory service was not written here. It came from an open-source library. But as described in [the first post](/en/examples-beat-instructions), that library's extraction prompt had to be changed — Korean conversations were being extracted into English.
+The storage and retrieval engine behind the memory service wasn't written here. It came from an open-source library. But as described in [the first post](/en/examples-beat-instructions), that library's extraction prompt had to be changed — Korean conversations were being extracted into English.
 
 That is where the choice appears.
 
@@ -18,7 +18,7 @@ That is where the choice appears.
 | Fork                | free        | cherry-pick required | blurs quickly |
 | Vendor              | free        | selective            | maintainable  |
 
-As a dependency the prompt cannot be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
+As a dependency the prompt can't be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
 
 I took the third. Pull the code into the repository wholesale, but keep it in a state where a diff against the original is always possible.
 
@@ -30,7 +30,7 @@ I took the third. Pull the code into the repository wholesale, but keep it in a 
 
 ## The price is discipline
 
-Vendoring is not copying. Copying is easy; keeping it is not. What makes it keepable is following a few rules without exception.
+Vendoring isn't copying. Copying is easy; keeping it isn't. What makes it keepable is following a few rules without exception.
 
 No formatter touches it. Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. That is a rule, not laziness.
 

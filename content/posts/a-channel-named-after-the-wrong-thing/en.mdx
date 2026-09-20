@@ -89,7 +89,7 @@ The order in the logs shows the mechanism directly. The first token inflates on 
 | 4     | ` World` + 3 earlier tokens                                   |
 | 5     | `")` + 4 earlier tokens, the 5-token block repeating 38 times |
 
-By its symptom this is a streaming bug, so the streaming code is where I looked first. Buffering, chunk boundaries, reassembly. None of it. Duplication is not a pipe problem but a subscriber-count problem. One writer and two readers emit twice however well the pipe is written. While you are looking at the pipe, you cannot see that.
+By its symptom this is a streaming bug, so the streaming code is where I looked first. Buffering, chunk boundaries, reassembly. None of it. Duplication isn't a pipe problem but a subscriber-count problem. One writer and two readers emit twice however well the pipe is written. While you are looking at the pipe, you can't see that.
 
 ## The same bug wearing a second face
 
@@ -102,13 +102,13 @@ Los Angeles came back clean. Seoul came back like this.
 Weather 🌤️ in Tomorrow Seoul#'s Weather 🌤 (️Web Search in Tomorrow Seoul#'s …
 ```
 
-Tokens were not repeating — they were being spliced into each other's positions. While streaming, a citation goes out as a placeholder first, and once the source is resolved an event follows saying "replace this string with that one". Two parallel requests shared one channel, so those replacements landed in each other's text. They applied where a replacement had already happened, and partial matches accumulated.
+Tokens weren't repeating — they were being spliced into each other's positions. While streaming, a citation goes out as a placeholder first, and once the source is resolved an event follows saying "replace this string with that one". Two parallel requests shared one channel, so those replacements landed in each other's text. They applied where a replacement had already happened, and partial matches accumulated.
 
-The symptoms look nothing alike; the cause is one line. The channel is named after the request ID, and the request ID was not unique per stream. Nested, it echoes. Parallel, it interleaves.
+The symptoms look nothing alike; the cause is one line. The channel is named after the request ID, and the request ID wasn't unique per stream. Nested, it echoes. Parallel, it interleaves.
 
 ## Two fixes, one shape
 
-The first thing shipped was a stopgap: move publishing out of the agent level and up to the orchestrator level. Remove the publisher on the inside and the loop cannot close. The symptom stopped; the channel name did not change.
+The first thing shipped was a stopgap: move publishing out of the agent level and up to the orchestrator level. Remove the publisher on the inside and the loop can't close. The symptom stopped; the channel name didn't change.
 
 The real fix derives a new ID for the inner call.
 

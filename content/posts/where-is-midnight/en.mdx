@@ -7,11 +7,11 @@ tags: ['Timezone', 'KST', 'Billing']
 draft: false
 ---
 
-Six bugs were fixed within one week. The symptoms had nothing in common.
+Six bugs were fixed within one week. The symptoms hadn'thing in common.
 
-The weekly ranking did not refresh on Monday morning. Review cards did not appear on their due date. Credits refilled without limit. The admin dashboard and the admin list showed different numbers. An announcement was invisible on the day it was scheduled to start. A monthly referral cap did not reset when the month did.
+The weekly ranking didn't refresh on Monday morning. Review cards didn't appear on their due date. Credits refilled without limit. The admin dashboard and the admin list showed different numbers. An announcement was invisible on the day it was scheduled to start. A monthly referral cap didn't reset when the month did.
 
-They had one cause. And that cause was not "we used UTC".
+They had one cause. And that cause wasn't "we used UTC".
 
 ## The server lives in UTC
 
@@ -25,11 +25,11 @@ new Date().setHours(0, 0, 0, 0);
 
 That line means local midnight, and the server's local is UTC. For a Korean user this value is 09:00 KST.
 
-So the "start of day" this code computes is not midnight but nine in the morning. Nothing raises, nothing appears in the log, and on a developer's laptop it looks correct — because the laptop's local is KST.
+So the "start of day" this code computes isn't midnight but nine in the morning. Nothing raises, nothing appears in the log, and on a developer's laptop it looks correct — because the laptop's local is KST.
 
 ## The real defect is the mixing
 
-Laid side by side, the six sharpened into something more precise. It was not that they used UTC. It was that the two sides of one comparison were in different timezones.
+Laid side by side, the six sharpened into something more precise. It wasn't that they used UTC. It was that the two sides of one comparison were in different timezones.
 
 Start with the most expensive one: the daily credit refill.
 

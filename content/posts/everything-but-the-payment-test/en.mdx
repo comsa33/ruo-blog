@@ -23,11 +23,11 @@ Every build succeeded. There were no warnings.
 
 After it was approved I opened the app and checked it. Login, recording, scoring, history. All fine.
 
-I did not press buy. I could have pushed it to the internal test track first, and I did not do that either. It went straight to production.
+I didn't press buy. I could have pushed it to the internal test track first, and I didn't do that either. It went straight to production.
 
-The reason is not mysterious. Most of this app's code is written and changed by an AI agent. Nothing had gone wrong before. So I assumed nothing would go wrong this time. I assumed that about a release which changed the build configuration.
+The reason isn't mysterious. Most of this app's code is written and changed by an AI agent. Nothing had gone wrong before. So I assumed nothing would go wrong this time. I assumed that about a release which changed the build configuration.
 
-The agent was not wrong. `minifyEnabled` and `shrinkResources` are the options Google asked for, turned on the way the documentation says to turn them on. What was wrong came after. Whoever writes the code, pressing the revenue path once before shipping is the operator's job, and I did not do it.
+The agent wasn't wrong. `minifyEnabled` and `shrinkResources` are the options Google asked for, turned on the way the documentation says to turn them on. What was wrong came after. Whoever writes the code, pressing the revenue path once before shipping is the operator's job, and I didn't do it.
 
 <Callout label="Why this release was different" accent>
 An ordinary release here changes only web code. The app loads its web layer remotely, so a web deploy reaches the app immediately and the native shell never moves. Rebuilding the app is rare.
@@ -173,7 +173,7 @@ It was not a class that was missing. It was the registry.
 
 Both produce the same symptom. It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I made two correct fixes while believing both were wrong.
 
-When the first fix is logically right and the symptom does not move, suspect a second cause before abandoning the hypothesis.
+When the first fix is logically right and the symptom doesn't move, suspect a second cause before abandoning the hypothesis.
 
 ## The fix
 
@@ -222,14 +222,14 @@ adb logcat | grep "D/CdvPurchase"
 
 ## What is still open
 
-The loss itself is small. Eleven app payments in August, 69,300 KRW, became zero in September. The problem is not the amount. It is that one revenue path was 100% dead and for ten days no instrument mentioned it.
+The loss itself is small. Eleven app payments in August, 69,300 KRW, became zero in September. The problem isn't the amount. It is that one revenue path was 100% dead and for ten days no instrument mentioned it.
 
 I will never know how many people tried and gave up. The failures never reached the server, so there is no data to count. How many pressed buy, watched "Processing…", and deleted the app is unobservable.
 
-Handing an AI your code and handing it your verification are different acts. This is the biggest thing I took from it. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. Whoever writes the code, deciding what to verify before shipping is not delegable.
+Handing an AI your code and handing it your verification are different acts. This is the biggest thing I took from it. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. Whoever writes the code, deciding what to verify before shipping isn't delegable.
 
 Being rushed erased the procedure. There was a store deadline. That is a reason and not an excuse. A release with a deadline is exactly the one that should go through the internal test track, and the judgement went the other way.
 
-A web app in a native wrapper needs one more layer of attention. Capacitor's own plugins ship their keep rules with the library, so they are protected. Cordova-compatible plugins are not. Normally only the web is deployed, so it is easy to forget that layer exists at all — until the day the native build is touched and the whole bill arrives at once.
+A web app in a native wrapper needs one more layer of attention. Capacitor's own plugins ship their keep rules with the library, so they are protected. Cordova-compatible plugins aren't. Normally only the web is deployed, so it is easy to forget that layer exists at all — until the day the native build is touched and the whole bill arrives at once.
 
-It has not been a full day yet. On a real device I have confirmed initialization and product lookup. I have not yet seen a payment from an actual user come back. Calling it fixed takes a few more days of watching.
+It hasn't been a full day yet. On a real device I've confirmed initialization and product lookup. I haven't yet seen a payment from an actual user come back. Calling it fixed takes a few more days of watching.
