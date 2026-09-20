@@ -146,8 +146,8 @@ After release each would have needed a data migration. String timestamps mean co
 
 ## What is left
 
-To avoid silent failure, "none" and "couldn't fetch" must be different values. Express both as an empty array and an outage disguises itself as a normal response. That is a type problem, not a logging problem.
+Express "none" and "couldn't fetch" as the same empty array and **an outage disguises itself as a normal response.** Four of the six had that shape. More logging doesn't reach it; the types have to be split, and that refactor hasn't happened.
 
-Correctness that depends on configuration isn't correctness. Code that is only right when the pod timezone is set carries the burden of verifying that setting forever. If it can be pinned as a constant, pin it.
+The other two are the same in character. Code that leaned on the pod timezone is pinned to a constant now, and that `NOT NULL` is `NULL` is known to everyone who knows SQL, which is exactly why nobody raised it in review. Knowing something and recalling it at the right moment seem to be different things.
 
-Three-valued logic only bites when forgotten. That `NOT NULL` is `NULL` is known to everyone who knows SQL, which is exactly why nobody raises it in review. Knowing something and recalling it at the right moment are different skills.
+To find the next ones in this family I'd have to count the places that return an empty array. I haven't counted them.

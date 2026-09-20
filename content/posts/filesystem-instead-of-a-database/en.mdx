@@ -228,4 +228,4 @@ That depends on how the user writes their code, and it isn't something we can en
 
 The same exception is raised from four layers. Nothing in the log distinguishes a `ModuleNotFoundError` caused by the search path, the module cache, a volume mount or registration order. Attaching a distinct diagnostic per layer is still undone.
 
-In hindsight the real decision wasn't "no database". It was to import user code inside our own process. Running it in a separate process or container would have eliminated every bug in this post, at the cost of call latency and resource isolation work. We haven't recomputed that trade since. For now we simply believe this approach stays inside what we can handle.
+In hindsight the real decision wasn't "no database". **It was to import user code inside our own process.** Running it in a separate process or container would have eliminated every bug in this post, at the cost of call latency and resource isolation work. We haven't recomputed that trade since. For now we simply believe this approach stays inside what we can handle.
