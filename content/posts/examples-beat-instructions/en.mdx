@@ -1,6 +1,6 @@
 ---
-title: 'Examples beat instructions'
-description: 'Memories extracted from Korean conversations were being stored in English. No placement of the instruction helped, because the instruction was never the problem.'
+title: 'Why Korean conversations produced English memories'
+description: 'The extraction prompt carried 14 English few-shot examples. No placement of an instruction changed anything; cutting to three examples with one Korean pair did.'
 topic: 'Agent memory'
 date: 2026-08-15
 tags: ['prompt design', 'LLM', 'Korean']
@@ -16,7 +16,7 @@ The conversation had been in Korean from beginning to end.
 
 ## Where this happens
 
-Structure first. The memory service does not own the transcript. The transcript lives in exactly one place, and this service holds only **summaries, cursors, and memories**.
+Structure first. The memory service does not own the transcript. The transcript lives in exactly one place, and this service holds only summaries, cursors, and memories.
 
 <Structure
   nodes={[
@@ -109,7 +109,7 @@ Counting tokens killed it.
   hint="Hover a segment or a row for detail."
 />
 
-We were resending 98% to process 2%. When fixed cost dominates, there is one answer: **batch, and share the fixed cost across turns.**
+We were resending 98% to process 2%. When fixed cost dominates, there is one answer: batch, and share the fixed cost across turns.
 
 <Playground
   caption="Cost of processing 1,000 turns by batch size"
@@ -184,22 +184,22 @@ Batches of five cut it by 4.6×. Push the slider further and it keeps improving,
 
 ## No placement of the instruction worked
 
-If fixed cost is 80%, batching is not the only lever. **You can shrink the fixed cost itself.** Reading that prompt is how I ran into the language bug.
+If fixed cost is 80%, batching is not the only lever. You can shrink the fixed cost itself. Reading that prompt is how I ran into the language bug.
 
 The first attempt was to just say it: write in the same language as the input. Four conditions:
 
-| Condition | Instruction placement                      | Result     |
-| --------- | ------------------------------------------ | ---------- |
-| A         | 8 lines at the end of the user prompt      | English    |
-| B         | End of the system prompt, forcefully       | English    |
-| C         | Start of the system prompt, forcefully     | English    |
-| E         | Minimal prompt with no examples + one line | **Korean** |
+| Condition | Instruction placement                      | Result  |
+| --------- | ------------------------------------------ | ------- |
+| A         | 8 lines at the end of the user prompt      | English |
+| B         | End of the system prompt, forcefully       | English |
+| C         | Start of the system prompt, forcefully     | English |
+| E         | Minimal prompt with no examples + one line | Korean  |
 
-A, B and C all failed and only E passed. That was the answer. Placement was never the variable. What E removed was not a position but the **examples**.
+A, B and C all failed and only E passed. That was the answer. Placement was never the variable. What E removed was not a position but the examples.
 
 ## The cause was fourteen examples
 
-The prompt was 33,661 characters and contained fourteen English few-shot examples. In that entire prompt, the word `language` appeared **zero times**. Not one Korean character either.
+The prompt was 33,661 characters and contained fourteen English few-shot examples. In that entire prompt, the word `language` appeared zero times. Not one Korean character either.
 
 The model had not ignored the instruction. It read it, and then fourteen consecutive demonstrations of "take Korean, write English" outvoted a single line of prose.
 
@@ -211,7 +211,7 @@ The model had not ignored the instruction. It read it, and then fourteen consecu
 
 ## Same input, different prompt
 
-I cut the examples to three and made one of them a Korean input/output pair. The language rule is now carried by **demonstration**, not by a sentence.
+I cut the examples to three and made one of them a Korean input/output pair. The language rule is now carried by demonstration, not by a sentence.
 
 <Transform
   caption="Only the prompt changes; the input is identical"
@@ -286,9 +286,9 @@ The number that hurt was 50%. The English-extraction rate I believed until then 
 
 Rewriting the examples was also a chance to encode two contaminations that had been sitting there.
 
-The first is **recall re-ingestion**. A user asks "what did I say I liked?", the agent lists stored memories back, and that listing gets extracted as new facts. Copies of the same fact multiply every time the topic comes up.
+The first is recall re-ingestion. A user asks "what did I say I liked?", the agent lists stored memories back, and that listing gets extracted as new facts. Copies of the same fact multiply every time the topic comes up.
 
-The second is **absence statements**. "There is no record of that" was being stored as a memory that there is no record. A lookup result is not a memory.
+The second is absence statements. "There is no record of that" was being stored as a memory that there is no record. A lookup result is not a memory.
 
 | Contamination        | Before        | After         |
 | -------------------- | ------------- | ------------- |
@@ -310,7 +310,7 @@ How fast copies actually accumulate only shows up across sessions. Fifteen conse
   ]}
 />
 
-Without suppression, copies grow linearly. What matters is less that the final line is low and more that it **flattens early**: restating the same fact stops producing a new copy. Legitimate facts held at 22 of 24 throughout.
+Without suppression, copies grow linearly. What matters is less that the final line is low and more that it flattens early: restating the same fact stops producing a new copy. Legitimate facts held at 22 of 24 throughout.
 
 ## What I could not fix
 
@@ -318,14 +318,14 @@ It also became clear what a prompt cannot do.
 
 The agent suggests "navy is a safe choice", the user says nothing at all, and "the user prefers navy" gets stored. Instructions did not stop it. Extra examples did not. A dedicated non-response example did not. Three attempts, three failures.
 
-Fabricating decisions that were never made is fully blocked by rules now. But **whose opinion a stated thing belongs to** is not something a prompt adjudicates. That belongs in a filtering layer after ingestion.
+Fabricating decisions that were never made is fully blocked by rules now. But whose opinion a stated thing belongs to is not something a prompt adjudicates. That belongs in a filtering layer after ingestion.
 
 ## What is left
 
 Three things.
 
-**For a model, an example is a stronger signal than an instruction.** When a prompt contains both a rule and a demonstration that contradict each other, the demonstration wins. So trying to fix it by strengthening the instruction will keep failing. Find the contradicting demonstration instead.
+For a model, an example is a stronger signal than an instruction. When a prompt contains both a rule and a demonstration that contradict each other, the demonstration wins. So trying to fix it by strengthening the instruction will keep failing. Find the contradicting demonstration instead.
 
-**Synthetic benchmarks only fix the order of magnitude.** The distance between 13.4% and 50% is that lesson. Using synthetic data to place a threshold is fine; treating that number as evidence about production is not.
+Synthetic benchmarks only fix the order of magnitude. The distance between 13.4% and 50% is that lesson. Using synthetic data to place a threshold is fine; treating that number as evidence about production is not.
 
-**A long prompt is both a cost and a bug surface.** Nobody knew that `language` appeared zero times in 33,661 characters. Shrinking it was the act of reading it, and the bug was found while reading.
+A long prompt is both a cost and a bug surface. Nobody knew that `language` appeared zero times in 33,661 characters. Shrinking it was the act of reading it, and the bug was found while reading.

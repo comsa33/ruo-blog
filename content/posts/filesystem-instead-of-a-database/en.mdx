@@ -1,6 +1,6 @@
 ---
-title: 'We could not use a database, so we chose the filesystem'
-description: 'To import user-authored Python at runtime, the code has to be a real file on disk. Five months of bugs came out of that single constraint.'
+title: 'An engine that imports user code at runtime'
+description: 'Turning user Python into a live API without a restart means the code has to be a real file on disk. Three classes of bug came out of that, and three patches in I changed direction.'
 topic: 'Dynamic execution engine'
 date: 2025-10-31
 tags: ['Python', 'import', 'Architecture']
@@ -91,15 +91,15 @@ It worked while the server was up. After a restart:
 ModuleNotFoundError: No module named 'aaa'
 ```
 
-The cause was `sys.path`. Only the watched parent directory was added to the search path — **not the directory the module actually sits in.** While running, an earlier registration step happened to leave the path correct as a side effect. Restarting removed the coincidence.
+The cause was `sys.path`. Only the watched parent directory was added to the search path — not the directory the module actually sits in. While running, an earlier registration step happened to leave the path correct as a side effect. Restarting removed the coincidence.
 
 The fix is three lines. Add the module's own directory to the search path too.
 
 <Callout label="The nature of this bug">
-  **"It works while running" is the worst possible symptom.** The server is always up at the moment
-  a developer checks. You deploy, you test, you report success, and that night the pod restarts and
-  it breaks. When the moment of verification and the moment of destruction are different, no amount
-  of diligence catches it.
+  "It works while running" is the worst possible symptom. The server is always up at the moment a
+  developer checks. You deploy, you test, you report success, and that night the pod restarts and it
+  breaks. When the moment of verification and the moment of destruction are different, no amount of
+  diligence catches it.
 </Callout>
 
 ## Registration order splits a singleton in two
@@ -113,7 +113,7 @@ if normalized_module_name in sys.modules:
     del sys.modules[normalized_module_name]   # if present, drop it and rebuild
 ```
 
-The intent was to make file edits take effect. But deleting a name from `sys.modules` means the next import builds a **new object**, while anything already holding the old one keeps holding it.
+The intent was to make file edits take effect. But deleting a name from `sys.modules` means the next import builds a new object, while anything already holding the old one keeps holding it.
 
 <Sequence
   caption="Registering in the order A → C → B"
@@ -147,7 +147,7 @@ The intent was to make file edits take effect. But deleting a name from `sys.mod
   ]}
 />
 
-A singleton is a promise that there is only one, and that promise was broken by **registration order**. In the order A → B → C nothing would have happened.
+A singleton is a promise that there is only one, and that promise was broken by registration order. In the order A → B → C nothing would have happened.
 
 The fix inverts the rule: reuse an already-loaded module, and re-read only when the file genuinely changed.
 
@@ -161,11 +161,11 @@ ModuleNotFoundError: No module named 'utils.commons.debugger'
 
 This package is not user code; it ships in the image. Locally it was obviously there. On Kubernetes it vanished.
 
-**The shared volume was mounted over the same path in the image.** A mount hides whatever was at that path. A file plainly present in the image ceases to exist the moment the volume attaches.
+The shared volume was mounted over the same path in the image. A mount hides whatever was at that path. A file plainly present in the image ceases to exist the moment the volume attaches.
 
 The fix was on the deployment side. An init container copies the shared package from the image onto the volume, and the editing service mounts it read-only. Not one line of application code changed.
 
-The error messages for all three are nearly identical: `ModuleNotFoundError`. The causes were the search path, the module cache and a volume mount. **The same exception is raised from different layers.**
+The error messages for all three are nearly identical: `ModuleNotFoundError`. The causes were the search path, the module cache and a volume mount. The same exception is raised from different layers.
 
 ## Three patches, then a change of direction
 
@@ -173,11 +173,11 @@ Duplicate registration was held together with local fixes for a while. Simplify 
 
 Four months later the approach changed. The single loop that read a file, executed it and pulled out a router was split in two.
 
-**Phase 1.** Compile every file, create an empty module object, register it in `sys.modules`. **Do not execute.**
+Phase 1. Compile every file, create an empty module object, register it in `sys.modules`. Do not execute.
 
-**Phase 2.** Execute the registered modules and extract routers.
+Phase 2. Execute the registered modules and extract routers.
 
-Two things follow. First, by the time phase 2 starts every module name is already in `sys.modules`, so `import` resolves regardless of processing order. Second, execution begins only after all compilation succeeded, so **a syntax error in the third file no longer leaves the first two half-deployed.**
+Two things follow. First, by the time phase 2 starts every module name is already in `sys.modules`, so `import` resolves regardless of processing order. Second, execution begins only after all compilation succeeded, so a syntax error in the third file no longer leaves the first two half-deployed.
 
 ## What phase 2 actually guarantees
 
@@ -218,14 +218,14 @@ Rather than stop there, I measured it. To check whether the ordering problem was
   ]}
 />
 
-So what two-phase loading solved is **name resolution**, not **execution order**. A top-level `from X import name` still depends on order. If the user writes `import X` and defers attribute access into a function, order disappears.
+So what two-phase loading solved is name resolution, not execution order. A top-level `from X import name` still depends on order. If the user writes `import X` and defers attribute access into a function, order disappears.
 
 That depends on how the user writes their code, and it is not something we can enforce.
 
 ## What is still open
 
-**`sys.modules` is process-global mutable state**, and we use it as a deployment state store. Delete a key and someone else's reference goes stale; keep it and edits do not take effect. There is no safe point between those two, and what we picked is a compromise: delete only when the file genuinely changed. If that judgment is wrong, one of the two symptoms returns.
+`sys.modules` is process-global mutable state, and we use it as a deployment state store. Delete a key and someone else's reference goes stale; keep it and edits do not take effect. There is no safe point between those two, and what we picked is a compromise: delete only when the file genuinely changed. If that judgment is wrong, one of the two symptoms returns.
 
-**The same exception is raised from four layers.** Nothing in the log distinguishes a `ModuleNotFoundError` caused by the search path, the module cache, a volume mount or registration order. Attaching a distinct diagnostic per layer is still undone.
+The same exception is raised from four layers. Nothing in the log distinguishes a `ModuleNotFoundError` caused by the search path, the module cache, a volume mount or registration order. Attaching a distinct diagnostic per layer is still undone.
 
-**In hindsight the real decision was not "no database".** It was to import user code inside our own process. Running it in a separate process or container would have eliminated every bug in this post, at the cost of call latency and resource isolation work. We have not recomputed that trade since. For now we simply believe this approach stays inside what we can handle.
+In hindsight the real decision was not "no database". It was to import user code inside our own process. Running it in a separate process or container would have eliminated every bug in this post, at the cost of call latency and resource isolation work. We have not recomputed that trade since. For now we simply believe this approach stays inside what we can handle.

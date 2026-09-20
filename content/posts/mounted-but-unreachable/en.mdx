@@ -1,6 +1,6 @@
 ---
-title: 'The deploy succeeded and the call returned 404'
-description: 'The console said deployed, the registration API returned 200, and the route really was registered. No request could reach it.'
+title: 'When Mount prefix matching hides a route'
+description: "The deploy succeeded, the route was registered, and calls still returned 404. FastAPI's Mount matches on prefix and takes the first hit; allowing a slash in the alias was the cause."
 topic: 'Dynamic execution engine'
 date: 2026-09-01
 tags: ['FastAPI', 'ASGI', 'Incident']
@@ -24,7 +24,7 @@ POST /agent/api/a10/test   -> 200
 
 The first suspect for a 404 is always the edge. A bad routing rule, an ingress that cannot resolve the path.
 
-Two things ruled that out. First, the request appeared in the pod log. Response time 24ms. It had passed the edge and reached the application. Second, the response body was `{"detail":"Not Found"}` — not our response envelope, but **FastAPI's default 404 format**.
+Two things ruled that out. First, the request appeared in the pod log. Response time 24ms. It had passed the edge and reached the application. Second, the response body was `{"detail":"Not Found"}` — not our response envelope, but FastAPI's default 404 format.
 
 So the app received the request, and the app said it could not find the route. The route was registered.
 
@@ -43,7 +43,7 @@ The site in question had two agents with these aliases.
 | First  | `api`    | `/api`     |
 | Second | `api/v2` | `/api/v2`  |
 
-Starlette's router **walks the registered routes in order and uses the first match**. And `Mount` is prefix matching, not exact matching.
+Starlette's router walks the registered routes in order and uses the first match. And `Mount` is prefix matching, not exact matching.
 
 <Sequence
   caption="How the request gets trapped in the wrong sub-application"
@@ -131,21 +131,21 @@ c.post("/api/v2/a1/main")  # 404
   ]}
 />
 
-This is where the real nature of the bug shows. **The correct answer depends on mount order.** And mount order comes from the order in which a restarting pod restores deployment state. That order is not guaranteed.
+This is where the real nature of the bug shows. The correct answer depends on mount order. And mount order comes from the order in which a restarting pod restores deployment state. That order is not guaranteed.
 
 <Callout label="A bug that disappears on restart" accent>
   Restarting the pod can make the symptom go away, and the next restart can bring it back. This is
-  the kind of defect where **failing to reproduce is not the same as having fixed it.** In practice
-  it gets reported as "it does that sometimes" and stays that way for a long time.
+  the kind of defect where failing to reproduce is not the same as having fixed it. In practice it
+  gets reported as "it does that sometimes" and stays that way for a long time.
 </Callout>
 
 ## Two options, one discarded
 
-**Option 1. Validate the alias.** Reject aliases containing a slash at registration time.
+Option 1. Validate the alias. Reject aliases containing a slash at registration time.
 
-**Option 2. Sort mounts by descending path length.** Let longer paths match first.
+Option 2. Sort mounts by descending path length. Let longer paths match first.
 
-Option 2 looked more fundamental — safe for any alias that might arrive. But it has a cost. Agents are added and removed at runtime, continuously. Each change means re-sorting the root app's route list, and a request arriving between unmount and remount races with it. It means permanently carrying **code that shuffles the routing table while serving traffic**.
+Option 2 looked more fundamental — safe for any alias that might arrive. But it has a cost. Agents are added and removed at runtime, continuously. Each change means re-sorting the root app's route list, and a request arriving between unmount and remount races with it. It means permanently carrying code that shuffles the routing table while serving traffic.
 
 So we measured what option 2 would actually prevent.
 
@@ -156,9 +156,9 @@ app.mount("/apiv2", ...)   # second
 -> /apiv2/y  200
 ```
 
-Starlette's `Mount` **matches on segment boundaries**. `/api` does not intercept `/apiv2/y`. Prefix here means path prefix, not string prefix.
+Starlette's `Mount` matches on segment boundaries. `/api` does not intercept `/apiv2/y`. Prefix here means path prefix, not string prefix.
 
-That narrows the collision condition to one thing. One alias has to be a **path prefix** of another, and that is only possible if an alias contains a slash. Restrict aliases to a single segment and the collision cannot occur at all. In that state, option 2's sorting becomes **code that will never change anything**.
+That narrows the collision condition to one thing. One alias has to be a path prefix of another, and that is only possible if an alias contains a slash. Restrict aliases to a single segment and the collision cannot occur at all. In that state, option 2's sorting becomes code that will never change anything.
 
 We also confirmed that no alias in production contained a slash. The offending `api/v2` had been created for a test.
 
@@ -168,14 +168,14 @@ We did not adopt the sorting. Instead of stacking one more layer of defence, we 
 
 The existing validation was this. The alias field was declared as a plain string with no format check. The only thing verified at registration was whether it matched the agent's own previous alias. An alias with a slash passed straight through.
 
-That is what made this defect expensive. **The bad input was recorded as a success.** The registration API returned 200, the console showed deployed, the route was actually created. Every signal a user can see said fine. The signal that something was wrong arrived hours later as a 404 on a different agent, somewhere that looked unrelated to the cause.
+That is what made this defect expensive. The bad input was recorded as a success. The registration API returned 200, the console showed deployed, the route was actually created. Every signal a user can see said fine. The signal that something was wrong arrived hours later as a 404 on a different agent, somewhere that looked unrelated to the cause.
 
 The only moment you can reject a value is when it arrives. Miss that moment and from then on you are tracing causes backwards from consequences.
 
 ## What is still open
 
-**The console still reports the deploy as successful.** New collisions cannot happen now that registration rejects them. But as long as deployed is defined as "the file was written and the route was registered", nobody verifies "that route can be reached". A post-deploy check that calls the agent once would have surfaced this within seconds of registration. There isn't one.
+The console still reports the deploy as successful. New collisions cannot happen now that registration rejects them. But as long as deployed is defined as "the file was written and the route was registered", nobody verifies "that route can be reached". A post-deploy check that calls the agent once would have surfaced this within seconds of registration. There isn't one.
 
-**Order-dependent defects are hard to test for.** The reproduction above is fifteen lines, but it was written after the cause was known. Catching it beforehand would require imagining a test that registers two agents in one specific order, and that act of imagination is already the answer.
+Order-dependent defects are hard to test for. The reproduction above is fifteen lines, but it was written after the cause was known. Catching it beforehand would require imagining a test that registers two agents in one specific order, and that act of imagination is already the answer.
 
-**Knowing a framework's matching rules is not the same as recalling them in the moment.** That `Mount` matches by prefix and the router takes the first match is in the documentation. The distance is between that fact and "allowing a slash in an alias makes some agent permanently unreachable". What closed that distance was not the documentation. It was fifteen lines of reproduction code.
+Knowing a framework's matching rules is not the same as recalling them in the moment. That `Mount` matches by prefix and the router takes the first match is in the documentation. The distance is between that fact and "allowing a slash in an alias makes some agent permanently unreachable". What closed that distance was not the documentation. It was fifteen lines of reproduction code.
