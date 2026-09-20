@@ -77,7 +77,7 @@ We started at 0.9, on the theory that a high bar is a safe bar.
 
 Production disagreed immediately. A user corrected their moving date to December, and the stale "November" memory kept coming back as the top search result. The correction hadn't failed to save; both were alive, and the stale one simply retrieved better.
 
-A high threshold isn't safe. It means wrong memories live longer.
+I'd assumed a high threshold was the safe direction. It turned out to be the opposite: the higher it sits, the longer a wrong memory survives.
 
 ## So we measured
 
@@ -131,7 +131,7 @@ Press 0.80 and two of the four added-detail pairs get overwritten. Push to 0.90 
 
 The thin margin is on the less dangerous side. Losing an elaboration loses the _why_ but keeps the _what_, and history can restore it. Losing a different fact destroys the fact itself, silently.
 
-So the margin was given to the dangerous axis. The asymmetry between 0.22 and 0.006 is a decision, not an oversight.
+So the margin was given to the dangerous axis. The asymmetry between 0.22 and 0.006 is deliberate.
 
 The same principle set the merge threshold, measured separately over 28 pairs.
 
@@ -184,9 +184,9 @@ Measuring surfaced a region no threshold reaches.
   ]}
 />
 
-Same kind of correction: caught when the frame is preserved, missed when it isn't. Lowering the threshold doesn't fix this — going lower starts overwriting genuinely different facts.
+Same kind of correction: **caught when the frame is preserved, missed when it isn't.** Lowering the threshold doesn't fix this — going lower starts overwriting genuinely different facts.
 
-This region isn't a similarity problem; it is a question similarity can't be asked. The answer is to let the model name the memory it is replacing, not to tune a number. The real yield of the measurement wasn't 0.85, but knowing the boundary of where 0.85 stops applying.
+I don't think this is a question similarity can be asked at all. Tuning the number won't reach it; the model has to name the memory it is replacing. Learning where 0.85 stops applying was the biggest thing this measurement produced.
 
 ## On the read path we dropped thresholds entirely
 
@@ -205,7 +205,7 @@ The measurement said otherwise.
   note="Cutting made it worse. The cause: <strong>score scale differs by query type.</strong> A topical query's top hit scored 0.397; a personal-fact query's top hit scored 0.092. Put them on one axis and the personal-fact side loses its correct answers first."
 />
 
-Embedding scores aren't absolute. The same 0.3 is a top hit for one query and noise for another. On the write path two sentences are compared directly, so the value means something; in search the axis moves with every query.
+Embedding scores aren't absolute. The same 0.3 is a top hit for one query and noise for another. On the write path two sentences are compared directly, so the value means something; in search **the axis moves with every query.**
 
 So search has no absolute threshold, only ordering. Narrowing is done with conditions instead of scores.
 
@@ -230,12 +230,4 @@ One of the protected groups is thin. Added-detail has four pairs. That shape of 
 
 The domain is narrow. The pairs come from three work personas. Sentence shapes from other domains were never measured.
 
-## What is left
-
-A threshold is measured, not chosen. 0.85 is an observation, not a judgement. When someone asks, there is a table.
-
-Decide the cost of failing in each direction first. Once you know which way it hurts less to be wrong, where to put the margin follows. Skip that step and the threshold just drifts to the middle.
-
-The yield of measuring is a boundary, not a number. Learning that reframed corrections escape every threshold was worth more than arriving at 0.85. Knowing where something stops working tells you where to build something else.
-
-The same instrument inverts in a different position. The absolute threshold that worked for writing cut the correct answers first in search. A fixed axis and an axis that moves per query aren't the same problem.
+Still, a threshold is measured, not chosen, and when someone asks where 0.85 came from there is now a table to show them. The table only answers that far. What to do about reframed corrections sits outside the number, and I haven't touched it yet. Before that I want to count how often production logs land near 0.85.

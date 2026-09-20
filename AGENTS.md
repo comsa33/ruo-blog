@@ -284,13 +284,11 @@ or give them one closing paragraph with no heading.
 These exist because a drafting agent will otherwise repeat a good device until
 it is wallpaper.
 
-| Device                                          | Limit per post                                 |
-| ----------------------------------------------- | ---------------------------------------------- |
-| `**bold**`                                      | 3. Never to open a paragraph.                  |
-| "A가 아니라 B다" aphorism                       | 1. Not once per section.                       |
-| Raw emotion (유레카 / 처참했다 / 찝찝하다)      | 2–3. Not zero.                                 |
-| An admission of not having understood something | at least 1                                     |
-| Hedged endings (`~듯하다` `~같다` `~더라`)      | several — do not end everything as a certainty |
+| Device                                     | Limit per post                                 |
+| ------------------------------------------ | ---------------------------------------------- |
+| `**bold**`                                 | 3. Never to open a paragraph.                  |
+| "A가 아니라 B다" aphorism                  | 1. Not once per section.                       |
+| Hedged endings (`~듯하다` `~같다` `~더라`) | several — do not end everything as a certainty |
 
 #### Say who worked it out, when it mattered
 
@@ -340,8 +338,8 @@ ends up sounding like he knew all along.
 | `~믿고 싶다`                 | "I would like to believe"                        |
 | `아직 모른다`                | "I still do not know" — not "it remains unclear" |
 
-Keep the emotion and keep the admission of not having understood something. An
-English draft that is calmer than its Korean original is a failed translation.
+Whatever emotion and admission the Korean carries, carry it across. An English
+draft that is calmer than its Korean original is a failed translation.
 
 Contractions are allowed and preferred where they fall naturally — "I can't say
 it's fixed yet" over "I cannot yet say it is fixed". The formal register is not
@@ -349,6 +347,16 @@ restraint here, it is stiffness.
 
 Do not add English idiom the author would not reach for, and do not translate a
 Korean title word for word. Translate what the title does.
+
+#### Do not supply what the record does not hold
+
+Emotion and an admission of not having understood something are real features of
+this author's writing, and where the record carries them they belong in the
+post. They are not a quota. A drafting agent has no access to how a day actually
+felt, and inventing it produces sentences that are wrong in a way the author has
+to catch one by one — which is what happened the first time this was tried.
+
+Write what the notes, the logs and the commits support. Leave the rest out.
 
 #### Titles
 
