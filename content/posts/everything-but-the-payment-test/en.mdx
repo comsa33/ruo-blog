@@ -98,7 +98,7 @@ org.apache.cordova.ExposedJsApi      present
 res/xml/config.xml                   missing
 ```
 
-It was not a class that was missing. It was the registry.
+**It was not a class that was missing — it was the registry.**
 
 ## There were two causes
 
@@ -173,7 +173,7 @@ It was not a class that was missing. It was the registry.
 
 Both produce the same symptom. It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I made two correct fixes while believing both were wrong.
 
-When the first fix is logically right and the symptom doesn't move, suspect a second cause before abandoning the hypothesis.
+When the first fix is logically right and the symptom doesn't move, I think the thing to try is suspecting a second cause before abandoning the hypothesis.
 
 ## The fix
 
@@ -222,13 +222,11 @@ adb logcat | grep "D/CdvPurchase"
 
 ## What is still open
 
-The loss itself is small. Eleven app payments in August, 69,300 KRW, became zero in September. The problem isn't the amount. It is that one revenue path was 100% dead and for ten days no instrument mentioned it.
+The loss itself is small. Eleven app payments in August, 69,300 KRW, became zero in September. It isn't the amount I mind. One revenue path was 100% dead and for ten days no instrument mentioned it.
 
 I will never know how many people tried and gave up. The failures never reached the server, so there is no data to count. How many pressed buy, watched "Processing…", and deleted the app is unobservable.
 
-Handing an AI your code and handing it your verification are different acts. This is the biggest thing I took from it. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. Whoever writes the code, deciding what to verify before shipping isn't delegable.
-
-Being rushed erased the procedure. There was a store deadline. That is a reason and not an excuse. A release with a deadline is exactly the one that should go through the internal test track, and the judgement went the other way.
+The part that sticks with me is this one. When an agent does well for long enough, the checking quietly loosens. I had replaced a per-release check with "it has been fine so far," and the day that substitution first failed was the day I changed the build configuration. There was a store deadline pushing too, and a release with a deadline is exactly the one that should go through the internal test track, but the judgement went the other way. Whoever writes the code, **deciding what to verify before shipping isn't something you can hand over.**
 
 A web app in a native wrapper needs one more layer of attention. Capacitor's own plugins ship their keep rules with the library, so they are protected. Cordova-compatible plugins aren't. Normally only the web is deployed, so it is easy to forget that layer exists at all — until the day the native build is touched and the whole bill arrives at once.
 

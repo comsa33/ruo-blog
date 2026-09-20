@@ -322,10 +322,8 @@ Fabricating decisions that were never made is fully blocked by rules now. But wh
 
 ## What is left
 
-Three things.
+When a prompt contains both a rule and a demonstration that contradict each other, **the demonstration wins.** So trying to fix it by strengthening the instruction will keep failing. Find the contradicting demonstration instead.
 
-For a model, an example is a stronger signal than an instruction. When a prompt contains both a rule and a demonstration that contradict each other, the demonstration wins. So trying to fix it by strengthening the instruction will keep failing. Find the contradicting demonstration instead.
+The 13.4% and 50% from the synthetic benchmark were only good for placing the order of magnitude. Carry that number over as evidence about production and it's wrong.
 
-Synthetic benchmarks only fix the order of magnitude. The distance between 13.4% and 50% is that lesson. Using synthetic data to place a threshold is fine; treating that number as evidence about production isn't.
-
-A long prompt is both a cost and a bug surface. Nobody knew that `language` appeared zero times in 33,661 characters. Shrinking it was the act of reading it, and the bug was found while reading.
+And nobody knew that `language` appeared zero times in 33,661 characters. Shrinking the prompt was the act of reading it, and the bug was found while reading. Next time this prompt needs work I plan to count the examples before looking at a single rule.

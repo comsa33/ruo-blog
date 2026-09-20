@@ -32,7 +32,7 @@ I took the third. Pull the code into the repository wholesale, but keep it in a 
 
 Vendoring isn't copying. Copying is easy; keeping it isn't. What makes it keepable is following a few rules without exception.
 
-No formatter touches it. Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. That is a rule, not laziness.
+No formatter touches it. Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. It looks like laziness; it's the rule.
 
 Every changed line carries a comment saying why. When comparing against upstream later, that comment is the only clue. An uncommented change reads to the next person as "I guess the original was like that."
 
@@ -165,7 +165,7 @@ It is not clean. But it is deliberate debt: replace the engine and the compensat
 
 ## What is left
 
-Vendoring is not copying code, it is the discipline of staying diffable. Keeping formatters off and splitting the commits is not fastidiousness; it is the minimum condition for the strategy to work at all. Break it once and what you have is a fork.
+**Vendoring is not copying code, it is the discipline of staying diffable.** Keeping formatters off and splitting the commits looks fastidious, but it is the minimum condition for the strategy to work at all. Break it once and what you have is a fork.
 
 Being forced to read someone else's code teaches you things. That the async class is async in name only, that config keys are silently ignored, that a feature hides behind an implicit switch — all of it came from reading. As a dependency all three would have stayed unknown until they became incidents.
 

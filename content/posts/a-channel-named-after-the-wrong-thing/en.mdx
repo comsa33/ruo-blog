@@ -89,7 +89,7 @@ The order in the logs shows the mechanism directly. The first token inflates on 
 | 4     | ` World` + 3 earlier tokens                                   |
 | 5     | `")` + 4 earlier tokens, the 5-token block repeating 38 times |
 
-By its symptom this is a streaming bug, so the streaming code is where I looked first. Buffering, chunk boundaries, reassembly. None of it. Duplication isn't a pipe problem but a subscriber-count problem. One writer and two readers emit twice however well the pipe is written. While you are looking at the pipe, you can't see that.
+By its symptom this is a streaming bug, so the streaming code is where I looked first. Buffering, chunk boundaries, reassembly. None of it. **Duplication isn't a pipe problem but a subscriber-count problem.** One writer and two readers emit twice however well the pipe is written. While you are looking at the pipe, you can't see that.
 
 ## The same bug wearing a second face
 
@@ -137,7 +137,7 @@ But an empty header is filled in with its own name, looked up from the database.
 
 The receiving side is still silent. What got fixed was the caller. The chat service still fills in its own name when the originating-agent header is absent. An empty value on a nested call is almost certainly a mistake, and it is neither rejected nor logged.
 
-Sandbox code has no contract. The file behind this incident is user code, one per agent, living outside version control. Checking it now: it forwards the agent-name headers but still passes the original request ID. The shared client handles all thirteen headers for you, and nothing blocks the path around it that hand-rolls an HTTP client. The gap is not knowledge. It is the bypass.
+Sandbox code has no contract. The file behind this incident is user code, one per agent, living outside version control. Checking it now: it forwards the agent-name headers but still passes the original request ID. The shared client handles all thirteen headers for you, and nothing blocks the path around it that hand-rolls an HTTP client. I don't think the gap is really knowledge; it's that the bypass stays open.
 
 Nothing counts who published, and how often. Request ID, originating pod and timestamp, logged just before each publish, would have made "there are two subscribers" visible on day one. That logging does not exist. The post-mortem records it as needed.
 
