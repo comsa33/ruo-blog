@@ -1,0 +1,112 @@
+---
+title: "People don't read those things"
+description: "I tried to steer users with a short survey toward re-selecting by rewriting a banner, and lost. Then I put the recommended action in the primary button's place, adopted a set of interaction rules for the app, and looked at the screens again through them."
+topic: 'OPIc app'
+date: 2026-09-21
+tags: ['screens', 'interaction rules', 'decision']
+draft: false
+---
+
+The title of this post is something I said while we were polishing the banner text on the survey screen. People don't read those things, they just tap next out of habit. After saying it, instead of polishing the text further, I moved the button, and while I was at it I brought in a set of rules from outside for how screens get built.
+
+Some background first. The OPIc mock-test app I run takes a background survey before the exam, just like the real test does. You pick your job, where you live, your leisure activities, your sports, and the questions are drawn from those choices. In mid-September I rebuilt this survey to match the real exam's structure, and one thing the real exam does is require at least 12 selections in total, where our app had only ever enforced an upper bound. So there were now users whose saved survey fell short of 12, and when I counted them there were 116. For those people, picking again is the better option.
+
+## I tried to steer them with text
+
+The survey start screen has two buttons. Continue with the saved survey, and select anew. For anyone with a saved survey, continue was the primary button. That's the obvious layout. There's no reason to make people pick again every time.
+
+For users under 12 we put a banner above it, explaining that their saved selections fell below the real exam's requirement and recommending a fresh pick. And we were heading down the road of polishing that text. The agent was drafting it and I was reviewing.
+
+Looking at one of those drafts is when the line above came out of my mouth. You know it from using apps yourself. On a familiar screen you don't read the words, you tap where the button is. However well the banner was written, the primary button beneath it was still continue, and that's where the thumb goes.
+
+<Sequence
+  caption="The path a user actually takes with the banner in place"
+  actors={['User', 'Survey screen', 'Exam builder']}
+  steps={[
+    {
+      from: 'Survey screen',
+      to: 'User',
+      label: 'Banner: re-selecting is recommended',
+      async: true,
+      note: 'The screen shows the notice. This is everything text can do.',
+    },
+    {
+      from: 'User',
+      to: 'Survey screen',
+      label: 'Taps the primary button (continue)',
+      note: "It's a familiar screen, so they tap the primary button's spot without reading. The banner goes by.",
+    },
+    {
+      from: 'Survey screen',
+      to: 'Exam builder',
+      label: 'Builds the exam from under 12 selections',
+      note: 'So they sit an exam that is shaped differently from the real one. The notice was there and changed nothing.',
+    },
+  ]}
+/>
+
+Polishing the text was a fight that couldn't be won from the start. However good the notice gets, the spot that habit aims for stays where it is. So I changed the spot instead of the words. When the saved survey has fewer than 12 selections, select anew becomes the primary button and continue drops to secondary. The only thing added to select anew is "recommended" in brackets. The words aren't doing the work any more. Tap out of habit and the recommended action is what runs.
+
+## Bringing in the rules
+
+None of this is a new idea. Rauno Freiberg's Invisible Details of Interaction Design and Devouring Details say the same thing: habit is something you design for, and the recommended action belongs in the default position. This blog's own design rules were measured off those same two sites, so I wasn't unfamiliar with them. I just hadn't been applying them to the app.
+
+So right after that I decided to make those two pieces the rules for this app. Not just a summary of the originals, but a document that says where in our screens each rule lands, wired into the project instructions as a checklist for anyone touching the UI. There are ten rules and I'm not going to list them all here. What matters for this post is what became visible when I looked at our screens through them.
+
+## Frequency was the criterion
+
+The first thing that snagged was animation. The rule goes like this: on frequent interactions, remove the choreography. A transition that's nice to see once is just delay once it repeats.
+
+The most frequent interaction in our app is moving to the next question during an exam. Twelve to fifteen times per exam. And every question was playing a 640ms slide-up.
+
+<Playground
+  caption="How one transition adds up over a single exam"
+  param={{ label: 'Question transition length', initial: 640, unit: 'ms' }}
+  rows={Array.from({ length: 10 }, (_, i) => {
+    const ms = i * 100;
+    return {
+      value: ms,
+      results: [
+        { label: 'With 12 questions', value: `${((ms * 12) / 1000).toFixed(1)}s` },
+        { label: 'With 15 questions', value: `${((ms * 15) / 1000).toFixed(1)}s`, highlight: true },
+      ],
+    };
+  })}
+/>
+
+At 640ms and 15 questions, an exam spends 9.6 seconds watching a transition. That transition was probably fine on the first question, and I suspect that's how it got in, but by the fifteenth it's waiting. The home dashboard, on the other hand, gets opened a few times a day, so choreography is allowed there. There aren't good transitions and bad ones. Frequency drew the line.
+
+Beyond frequency, a full sweep of the code the same day produced some numbers.
+
+<Metrics>
+  <Metric value="87" label="Animations set to 'infinite'. The house standard is 0" />
+  <Metric
+    value="6"
+    label="Background blob loops running at all times on the question screen. With a backdrop blur on top, so even a still screen recomposites every frame"
+  />
+  <Metric value="2 / 84" label="CSS animations that respect prefers-reduced-motion" />
+</Metrics>
+
+The worst spot was the exam question screen. Six loops running even while the screen sat still. The user is speaking, and behind them blobs are reshaping on 8, 10 and 12 second cycles, composited once more through a blur. Battery being spent where nobody is looking.
+
+## A failure I'd already had got a name
+
+One of the rules is to respond immediately and confirm later, but if the confirmation fails, bring the UI back to the real state. Reading it, July came back to me.
+
+At the end of July a one-star review landed. The mic test couldn't hear their voice but the app said it was working fine, and on the results screen an answer they never gave was shown as theirs. It ended with "isn't this fraud". The cause was silence. With the microphone picking up nothing, the app displayed recording in progress, sent the silent file straight to the AI, and the AI made up a normal-length answer. At the time I put in four layers of level measurement and silence blocking to stop it.
+
+In early September the same structure showed up once more. Safari stops the recorder on its own during a background switch or a phone call, but the recording state on screen was React state, so it stayed put. The user keeps talking, not knowing it's cut off. The pause and resume handling trusted React state alone and never looked at the recorder's actual state.
+
+Neither of those happened because I didn't know the rule. It's that I fixed them as two separate bugs and never named them as the same kind. The rules document gave them the name. When what the UI shows and what the device is doing come apart, you don't swallow the exception. You bring the state back to reality and tell the user.
+
+There was one more of the same kind on the credit side. When credits hit zero, the AI scoring button quietly turned into rule-based scoring. The button was still there and still pressed, but the result was different. From the user's side they pressed AI scoring and got something else. That's the exact opposite of the rule about reading intent from context, so that one got fixed.
+
+## The audit didn't go as planned
+
+The task I wrote down the day I adopted the rules was a full audit against them, fixing everything. To be honest, that audit in that form didn't happen.
+
+Instead, a full redesign of the app started the same day, and the rules were absorbed into it. The question screen became a conversation thread with the examiner, so moving to the next question became one more speech bubble being added. With that structure, no transition is needed and nothing feels off. The first rule got kept by changing the structure rather than by deleting the animation, and I think that's the better way. Every confirmation dialog moved to a bottom sheet, with the recommended action as the wide primary button at the bottom. The layout I'd learned on the survey screen became the default across the app. When I measured the redesign branch again with grep, infinite loops of the shimmer and spin kind, gradients and hover states without a media query were all at 0.
+
+So here is where things stand. The rules exist as a document, the new screens were mostly built on top of them, and there is no table checking the old screens against each rule one by one. I'd like to believe the redesign replaced enough of the old screens that the table stopped being necessary, but I haven't checked.
+
+I also still haven't measured whether flipping the primary button actually raised the re-selection rate. Comparing how often select anew got tapped before and after would do it, and I haven't looked at that log yet. I think the judgement that text wouldn't work was right. That moving the button does work is, for now, still a belief.
