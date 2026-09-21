@@ -17,30 +17,114 @@ The survey start screen has two buttons. Continue with the saved survey, and sel
 
 For users under 12 we put a banner above it, explaining that their saved selections fell below the real exam's requirement and recommending a fresh pick. And we were heading down the road of polishing that text. The agent was drafting it and I was reviewing.
 
-Looking at one of those drafts is when the line above came out of my mouth. You know it from using apps yourself. On a familiar screen you don't read the words, you tap where the button is. However well the banner was written, the primary button beneath it was still continue, and that's where the thumb goes.
+Looking at one of those drafts is when the line above came out of my mouth. You know it from using apps yourself. On a familiar screen you don't read the words, you tap where the button is. However well the banner was written, the primary button beneath it was still continue, and that's where the thumb goes. Put the three screens side by side and it looks like this. They're redrawn straight from the code of the real screens, and the toggle at the top right marks where habit taps.
 
-<Sequence
-  caption="The path a user actually takes with the banner in place"
-  actors={['User', 'Survey screen', 'Exam builder']}
-  steps={[
+<ScreenCompare
+  caption="The three screens the same user saw. Redrawn from the app's code, keeping its strings, colours and button order"
+  habitLabel="Where habit taps"
+  screens={[
     {
-      from: 'Survey screen',
-      to: 'User',
-      label: 'Banner: re-selecting is recommended',
-      async: true,
-      note: 'The screen shows the notice. This is everything text can do.',
+      label: '① With the banner',
+      note: "The notice sits on top; the primary button is still 'start with previous survey' on the right. Unread, the banner might as well not be there.",
+      theme: {
+        bg: '#000000',
+        card: 'rgba(30, 41, 59, 0.4)',
+        ink: '#f8fafc',
+        muted: '#94a3b8',
+        primaryBg: 'rgba(251, 191, 36, 0.2)',
+        primaryFg: '#fbbf24',
+        primaryBorder: 'rgba(251, 191, 36, 0.35)',
+        secondaryBg: 'rgba(148, 163, 184, 0.12)',
+        secondaryFg: '#94a3b8',
+        secondaryBorder: 'rgba(148, 163, 184, 0.25)',
+        noticeBg: 'rgba(239, 68, 68, 0.1)',
+        noticeFg: '#fca5a5',
+        noticeBorder: 'rgba(239, 68, 68, 0.2)',
+        chipBg: 'rgba(251, 191, 36, 0.1)',
+        chipFg: '#fbbf24',
+      },
+      header: '설문조사',
+      title: '이전 설문이 있어요!',
+      desc: '이전에 선택한 설문을 그대로 쓰거나, 새로 시작할 수 있어요.',
+      notice: {
+        title: '실제 시험보다 적게 선택돼 있어요',
+        body: '실제 오픽 배경설문은 12개 이상을 고릅니다. 지금 선택은 5개예요. 새로 선택하면 실전과 같은 구성으로 문제가 출제됩니다.',
+      },
+      chipsLabel: '선택된 항목',
+      chips: ['홀로 거주', 'TV 보기', '영화 보기', '가족 여행', '조깅'],
+      nav: 'joined',
+      buttons: [
+        { label: '새로 선택', variant: 'secondary', flex: 2 },
+        { label: '이전 설문으로 시작', variant: 'primary', flex: 3 },
+      ],
     },
     {
-      from: 'User',
-      to: 'Survey screen',
-      label: 'Taps the primary button (continue)',
-      note: "It's a familiar screen, so they tap the primary button's spot without reading. The banner goes by.",
+      label: '② After the flip',
+      note: 'The text is almost unchanged. What changed is which button is gold and on the right.',
+      theme: {
+        bg: '#000000',
+        card: 'rgba(30, 41, 59, 0.4)',
+        ink: '#f8fafc',
+        muted: '#94a3b8',
+        primaryBg: 'rgba(251, 191, 36, 0.2)',
+        primaryFg: '#fbbf24',
+        primaryBorder: 'rgba(251, 191, 36, 0.35)',
+        secondaryBg: 'rgba(148, 163, 184, 0.12)',
+        secondaryFg: '#94a3b8',
+        secondaryBorder: 'rgba(148, 163, 184, 0.25)',
+        noticeBg: 'rgba(239, 68, 68, 0.1)',
+        noticeFg: '#fca5a5',
+        noticeBorder: 'rgba(239, 68, 68, 0.2)',
+        chipBg: 'rgba(251, 191, 36, 0.1)',
+        chipFg: '#fbbf24',
+      },
+      header: '설문조사',
+      title: '이전 설문이 있어요!',
+      desc: '이전에 선택한 설문을 그대로 쓰거나, 새로 시작할 수 있어요.',
+      notice: {
+        title: '실제 시험보다 적게 선택돼 있어요',
+        body: '실제 오픽 배경설문은 12개 이상을 고릅니다. 지금 선택은 5개예요. 새로 선택하면 실전과 같은 구성으로 문제가 출제됩니다.',
+      },
+      chipsLabel: '선택된 항목',
+      chips: ['홀로 거주', 'TV 보기', '영화 보기', '가족 여행', '조깅'],
+      nav: 'joined',
+      buttons: [
+        { label: '이전 설문', variant: 'secondary', flex: 2 },
+        { label: '새로 선택 (권장)', variant: 'primary', flex: 3 },
+      ],
     },
     {
-      from: 'Survey screen',
-      to: 'Exam builder',
-      label: 'Builds the exam from under 12 selections',
-      note: 'So they sit an exam that is shaped differently from the real one. The notice was there and changed nothing.',
+      label: '③ After the redesign (now)',
+      note: 'Same layout as ②. The notice became a card that shows the number first, and the recommended action as the wide primary button at the bottom became the default across the app.',
+      theme: {
+        bg: '#f4f1ea',
+        card: '#ffffff',
+        ink: '#17160f',
+        muted: '#6b675c',
+        primaryBg: '#157a55',
+        primaryFg: '#ffffff',
+        secondaryBg: '#ffffff',
+        secondaryFg: '#17160f',
+        noticeBg: '#fbeee4',
+        noticeFg: '#a34a17',
+        chipBg: '#e2f2e9',
+        chipFg: '#157a55',
+      },
+      header: '설문',
+      title: '이전 설문이 있어요',
+      desc: '이전에 고른 그대로 시작하거나, 새로 고를 수 있어요.',
+      notice: {
+        title: '실제 시험보다 적게 골라져 있어요',
+        body: '새로 고르면 실전과 같은 구성으로 출제돼요',
+        count: '5 / 12',
+      },
+      chipsLabel: '이전에 고른 것 · 5',
+      chips: ['홀로 거주', 'TV 보기', '영화 보기', '가족 여행', '조깅'],
+      nav: 'split',
+      buttons: [
+        { label: '이전 설문으로 시작', variant: 'secondary' },
+        { label: '새로 고르기', variant: 'primary' },
+      ],
     },
   ]}
 />
@@ -59,35 +143,9 @@ The first thing that snagged was animation. The rule goes like this: on frequent
 
 The most frequent interaction in our app is moving to the next question during an exam. Twelve to fifteen times per exam. And every question was playing a 640ms slide-up.
 
-<Playground
-  caption="How one transition adds up over a single exam"
-  param={{ label: 'Question transition length', initial: 640, unit: 'ms' }}
-  rows={Array.from({ length: 10 }, (_, i) => {
-    const ms = i * 100;
-    return {
-      value: ms,
-      results: [
-        { label: 'With 12 questions', value: `${((ms * 12) / 1000).toFixed(1)}s` },
-        { label: 'With 15 questions', value: `${((ms * 15) / 1000).toFixed(1)}s`, highlight: true },
-      ],
-    };
-  })}
-/>
-
 At 640ms and 15 questions, an exam spends 9.6 seconds watching a transition. That transition was probably fine on the first question, and I suspect that's how it got in, but by the fifteenth it's waiting. The home dashboard, on the other hand, gets opened a few times a day, so choreography is allowed there. There aren't good transitions and bad ones. Frequency drew the line.
 
-Beyond frequency, a full sweep of the code the same day produced some numbers.
-
-<Metrics>
-  <Metric value="87" label="Animations set to 'infinite'. The house standard is 0" />
-  <Metric
-    value="6"
-    label="Background blob loops running at all times on the question screen. With a backdrop blur on top, so even a still screen recomposites every frame"
-  />
-  <Metric value="2 / 84" label="CSS animations that respect prefers-reduced-motion" />
-</Metrics>
-
-The worst spot was the exam question screen. Six loops running even while the screen sat still. The user is speaking, and behind them blobs are reshaping on 8, 10 and 12 second cycles, composited once more through a blur. Battery being spent where nobody is looking.
+Beyond frequency, a full sweep of the code the same day produced numbers. 87 animations set to `infinite`, where the house standard is 0. CSS animations that respect prefers-reduced-motion: 2 out of 84. The worst spot was the exam question screen. Six background blob loops running even while the screen sat still. The user is speaking, and behind them blobs are reshaping on 8, 10 and 12 second cycles, composited once more through a blur. Battery being spent where nobody is looking.
 
 ## A failure I'd already had got a name
 

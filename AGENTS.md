@@ -121,17 +121,18 @@ with no import. **Prefer composing these over writing new components.**
 
 ### Explanatory engines — use these first
 
-| Component      | Use it for                                                                   |
-| -------------- | ---------------------------------------------------------------------------- |
-| `<Structure>`  | System architecture. Hovering a node dims everything it is not connected to. |
-| `<Sequence>`   | Ordered interaction between actors. Step through, or auto-play.              |
-| `<Breakdown>`  | What a single number is made of. One bar, hoverable segments.                |
-| `<Series>`     | A measurement over time. Lines draw themselves once on reveal.               |
-| `<Transform>`  | The same input through different pipelines, with the output re-resolving.    |
-| `<Threshold>`  | Cluster distributions against a threshold the reader can move.               |
-| `<Playground>` | A parameter the reader drags, with consequences recomputed.                  |
-| `<Spread>`     | Every measurement on one log axis, against a cut the reader can move.        |
-| `<Legibility>` | One shape at two real display sizes, with its feature size measured at each. |
+| Component         | Use it for                                                                                                                                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<Structure>`     | System architecture. Hovering a node dims everything it is not connected to.                                                                                      |
+| `<Sequence>`      | Ordered interaction between actors. Step through, or auto-play.                                                                                                   |
+| `<Breakdown>`     | What a single number is made of. One bar, hoverable segments.                                                                                                     |
+| `<Series>`        | A measurement over time. Lines draw themselves once on reveal.                                                                                                    |
+| `<Transform>`     | The same input through different pipelines, with the output re-resolving.                                                                                         |
+| `<Threshold>`     | Cluster distributions against a threshold the reader can move.                                                                                                    |
+| `<Playground>`    | A parameter the reader drags, with consequences recomputed.                                                                                                       |
+| `<Spread>`        | Every measurement on one log axis, against a cut the reader can move.                                                                                             |
+| `<Legibility>`    | One shape at two real display sizes, with its feature size measured at each.                                                                                      |
+| `<ScreenCompare>` | Two or three app screens side by side, redrawn from the app's code (its strings, button order and colours as props). A toggle marks where a habitual thumb lands. |
 
 ### Reading chrome — automatic, never authored
 
