@@ -62,10 +62,46 @@ draft: false # true hides it in production, shows it in dev
 
 `topic` and `tags` are the reader's orientation, printed above the title and in
 the index. **They are written for a reader, not for a search engine** — a
-subject a person would recognise, not a stack keyword. `topic` is the subject
-(`에이전트 메모리`), `tags` are qualifiers, two or three at most.
+subject a person would recognise, not a stack keyword.
 
 The label above the title is always `topic`.
+
+#### `topic` names the system, not the subject
+
+One post belongs to one system, and the same system always gets the same
+string. This was inconsistent for the first fourteen posts — half named a
+system (`에이전트 메모리`), half named a phenomenon (`시간대 경계`,
+`수요 계절성`), which is why the index had no visible axis. The live values:
+
+| `topic` (ko / en)                             | What it covers                         |
+| --------------------------------------------- | -------------------------------------- |
+| `에이전트 메모리` / `Agent memory`            | the memory service                     |
+| `동적 실행 엔진` / `Dynamic execution engine` | user code loaded and served at runtime |
+| `오픽 앱` / `OPIc app`                        | the author's own mock-test app         |
+| `지도 인터페이스` / `Map interfaces`          | the transit map work                   |
+
+Add a new `topic` only for a system that has no home here yet — not for a new
+subject inside one that does.
+
+#### `tags` are three fixed slots
+
+Two or three, in this order. The tag links are the only filter the site has
+(`/ko?q=<tag>`), so a tag is worth exactly what it groups.
+
+| Slot | Holds                                           | Examples                           |
+| ---- | ----------------------------------------------- | ---------------------------------- |
+| 1    | **where in the system** — a stage on its path   | `결제` `스트리밍` `추출` `성장`    |
+| 2    | **what with** — the concrete technology         | `MediaRecorder` `FastAPI` `코호트` |
+| 3    | **how it ended** — the contract with the reader | `진단` `결정` `설계`               |
+
+Slot 1 is the sub-category, and it works because it follows the system's own
+order rather than a stack word: memory runs 추출 → 저장·조회 → 유사도 판정,
+the engine runs 적재 → 라우팅 → 스트리밍, the app runs 수집 → 채점 → 결제 →
+화면 → 성장.
+
+**Slot 3 is not mandatory.** Leave it off and ship two tags when the post does
+not clearly land on one — a slot filled to be filled is the same failure as a
+`## 남은 것` section written because the last post had one.
 
 There is no post type. The index is one list, newest first. An earlier
 note/log split described the _form_ of a post rather than what a reader gets
