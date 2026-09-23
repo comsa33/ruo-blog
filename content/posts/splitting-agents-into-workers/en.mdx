@@ -7,7 +7,7 @@ tags: ['routing', 'A2A', 'design']
 draft: false
 ---
 
-Before A2A, giving one agent several abilities meant writing its conversation flow as a state machine. You draw the flow, hang conditions on it, pack complicated logic into the Python sandbox, and run a fixed loop. Working out whether it answers better this way or that way took a lot of testing, and as soon as a user threw a question that was a bit more complex or not what we'd expected, it tended to lose its way. We also built a separate agent for each purpose: a RAG agent, an agent that searches large attachments, a RAG agent for tables.
+Before A2A, giving one agent several abilities meant writing its conversation flow as a finite state machine (FSM). You draw the flow, hang conditions on it, pack complicated logic into the Python sandbox, and run a fixed loop. Working out whether it answers better this way or that way took a lot of testing, and as soon as a user threw a question that was a bit more complex or not what we'd expected, it tended to lose its way. We also built a separate agent for each purpose: a RAG agent, an agent that searches large attachments, a RAG agent for tables.
 
 After switching to A2A and trying it on the dev cluster, one orchestrator handed small agents as tools — a retriever, an attachment retriever, image analysis, web search — does all of that. Adding or changing a worker happens module by module, so it's easy, and when something goes wrong you follow it to the agent where it went wrong and fix just that one. Right now the PoC is being verified on the dev cluster while the other parts are built; it's before any production rollout.
 
@@ -61,7 +61,7 @@ This is the record of that PoC, from September 18 to 22. The test log holds 77 c
   hint="Hover a node to see its connections and notes."
 />
 
-Every turn, the orchestrator pulls its workers' Agent Cards from the catalog and turns them into LLM tools. The tool description is one line, `card name. skill description when to use: when_to_use e.g.: example1 / example2 …`, and at first the only argument was a `query` string. When the LLM picks a tool, the orchestrator sends that worker an A2A `SendMessage` and hands the result back as a tool result. What the state machine's flow and conditions used to do, the LLM now does by reading the cards. Adding a worker means nothing to change in the orchestrator; it shows up in the catalog from the next turn.
+Every turn, the orchestrator pulls its workers' Agent Cards from the catalog and turns them into LLM tools. The tool description is one line, `card name. skill description when to use: when_to_use e.g.: example1 / example2 …`, and at first the only argument was a `query` string. When the LLM picks a tool, the orchestrator sends that worker an A2A `SendMessage` and hands the result back as a tool result. What the FSM's flow and conditions used to do, the LLM now does by reading the cards. Adding a worker means nothing to change in the orchestrator; it shows up in the catalog from the next turn.
 
 So the only thing the LLM has to tell the workers apart is the card text. That's why registration refuses a card whose skill description or `when_to_use` is empty, or which has fewer than three examples, and why the design doc said:
 
@@ -107,7 +107,7 @@ So it called a worker the card had warned against. But the warning was already o
 
 Right after, I looked at the screen again, saw junk in the sources area, and said "there's something weird attached to the sources." That agent was publishing its own output straight onto the orchestrator's screen; the agent found the leak. It was built to see an answer through on its own, and I think that meant it did too much when it was being called as someone else's tool. I went with smaller. A new worker returns only the relevant passages from an attachment, verbatim. Its card says it only works if the file is passed along, and the tool got an argument for passing files. The old agent came off the list. After that, quoting an attachment and drawing its contents as a flowchart both came out right.
 
-With the workers in that shape, I asked for three things together. Find the number of steps in one section of the attached document, find what the state machine's components are in the internal docs, check today's weather in Seoul on the web, and finally work out in code the number of steps times seven.
+With the workers in that shape, I asked for three things together. Find the number of steps in one section of the attached document, find what the FSM's components are in the internal docs, check today's weather in Seoul on the web, and finally work out in code the number of steps times seven.
 
 In the first round, attachment quoting, the index catalog and web search were called at the same time, then the retriever and coding. Five kinds of worker ran on one question, and 29.5 seconds later all four answers (4, states/transitions/intents, the weather, 28) came back with nine sources. The old way, the attachment, the internal docs and the web would each have been a different agent's job.
 
@@ -176,7 +176,7 @@ In the 77 conversations in the test log, it never picked the wrong worker. There
   hint="Hover a segment to see what it holds."
 />
 
-Each fix landed on one worker or one spot in the prompt. When the index catalog acted up, I looked only at the catalog; when attachments failed, only at the attachment worker. In an agent written as a state machine, everything was tied into one flow, and pulling things apart like this was hard.
+Each fix landed on one worker or one spot in the prompt. When the index catalog acted up, I looked only at the catalog; when attachments failed, only at the attachment worker. In an agent written as an FSM, everything was tied into one flow, and pulling things apart like this was hard.
 
 Card quality, the thing the design worried about most, wasn't a problem in this period's record. Every card was drafted and registered by an agent. My part was creating the empty agents, handing over their ids, and deciding which workers there should be. As of the 22nd, four cards don't match what their workers actually do. The retriever and index catalog cards still describe them as they were before the index became required and the LLM came out, and the other two are about how sources get numbered and a worker's old name. None of the four has a record of causing a wrong-worker pick. The retriever card being out of date was one of the reasons case C called it without an index.
 
