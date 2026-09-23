@@ -75,7 +75,7 @@ The problem is that the sandbox passed its request ID down unchanged when it cal
   ]}
 />
 
-## The shape of the echo
+## The order the tokens multiplied in
 
 The order in the logs shows the mechanism directly. The first token inflates on its own, and from there the whole run of tokens so far circles as one block.
 
@@ -89,7 +89,7 @@ The order in the logs shows the mechanism directly. The first token inflates on 
 
 By its symptom this is a streaming bug, so the streaming code is where I looked first. I went through buffering, chunk boundaries and reassembly, and none of it was the cause. There were two services listening on the channel, so no amount of looking at the pipe was going to turn anything up.
 
-## It came back on parallel calls
+## Tokens mixed across parallel calls
 
 Weeks later a different symptom arrived. This time it was parallel calls: code in the sandbox calling two agents at once for the weather in Seoul and in Los Angeles.
 
@@ -104,7 +104,7 @@ This time the tokens were ending up in each other's positions instead of repeati
 
 The symptoms looked nothing alike, but the cause was the same. The channel was named after the request ID, and the request ID wasn't unique per stream.
 
-## Two fixes, one shape
+## Giving the inner call its own request ID
 
 The first thing shipped was a stopgap. Pubsub publishing was moved out of the agent level and up to the orchestrator level, which took away the publisher on the inside, and without it the loop can't close. The symptom stopped, but the channel name stayed as it was.
 
@@ -131,10 +131,10 @@ But an empty header is filled in with its own name, looked up from the database.
 
 </Callout>
 
-## What is still broken
+## The receiving side was left alone
 
-What got fixed was the caller; the receiving side is as it was. The chat service still fills in its own name when the originating-agent header is absent. An empty value on a nested call is almost certainly a mistake, yet it's neither rejected nor warned about.
+What got fixed was the caller. The chat service on the receiving end fills in its own name when the originating-agent header is missing, and on a nested call an empty value is almost certainly a mistake, yet it neither rejects it nor warns. It just carries on.
 
-The file behind this incident is user code, one per agent, so it has no contract and lives outside version control. Checking it now: it forwards the agent-name headers but still passes the original request ID. The shared client handles all thirteen headers for you, and nothing blocks the path around it that hand-rolls an HTTP client. I don't think the gap is really knowledge; it's that the bypass stays open.
+The file behind this incident is user code, one per agent, so it has no contract and lives outside version control. It forwards the agent-name headers but passes the original request ID straight through. The shared client handles all thirteen headers for you, and nothing blocks the path around it that hand-rolls an HTTP client. I don't think the gap is really knowledge; it's that the bypass is open.
 
-Logging request ID, originating pod and timestamp just before each publish would have made "there are two subscribers" visible on day one, but nothing counts who published, and how often. The post-mortem only records that it's needed. There's no regression test either. One check — an agent calls an agent, count the events the browser receives — would catch this class of bug. Once the nested-call incident closed, that check stopped being urgent, and weeks later the same cause came back on parallel calls.
+Logging request ID, originating pod and timestamp just before each publish would have made "there are two subscribers" visible on day one. The post-mortem says as much. A test where an agent calls an agent and the browser's events get counted would probably have caught the parallel case ahead of time too, but once the nested-call incident closed that check slipped down the list, and weeks later I ran into the same problem on parallel calls.

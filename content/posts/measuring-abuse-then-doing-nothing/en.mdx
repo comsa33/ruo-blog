@@ -1,6 +1,6 @@
 ---
 title: 'Multi-account farming cost us $0.27'
-description: 'I measured the scale before picking a countermeasure. At $0.27 the answer was to do nothing, and to remove one existing defence that was causing more harm than it prevented.'
+description: 'I checked the scale before picking a countermeasure. At $0.27 the answer was to do nothing, and to remove one existing defence that was causing more harm than it prevented.'
 topic: 'OPIc app'
 date: 2026-09-07
 tags: ['growth', 'control group', 'decision']
@@ -15,7 +15,7 @@ There was reason to suspect it. Clusters of similarly named accounts were visibl
 
 I applied none of them. Instead I deleted one defence that was already there.
 
-## Measure the size first
+## Check the size first
 
 Before choosing a countermeasure there is a prior question. How much am I losing right now?
 
@@ -115,8 +115,6 @@ One threshold is written down. If AI cost attributable to free users passes $100
 
 That $100 line is poorly justified, though. It's a number picked as a tolerable ceiling on loss, with no analysis behind it. I can't explain it beyond "about ten times current cost". I wrote elsewhere that thresholds should be measured rather than chosen, and here I chose one.
 
-## What is still open
-
-The control group was an accident. That one provider requires phone verification isn't something I designed; it simply is the case, and it handed me a comparison for free. There is no guarantee the next decision of this kind will have one. Deliberately designing a control group in is something I've never thought about.
+The control group was an accident. That one provider requires phone verification isn't something I designed; it simply is the case, and it handed me a comparison for free. There is no guarantee the next decision of this kind will have one.
 
 Putting fingerprints back into judgement is a long way off. It would need canvas or WebGL for entropy, and recent Safari injects noise for anti-fingerprinting so its values change every time and must be excluded from matching. That means a different rule per browser. That complexity isn't worth $0.27.

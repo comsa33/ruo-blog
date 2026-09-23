@@ -150,6 +150,6 @@ Four months later the logic moved out of the template string into a shared funct
 
 One loss was repaired too. Comment frames starting with a colon are forwarded untouched again, so heartbeats came back.
 
-Frames carrying only `event:` and `id:` are still dropped, though. The final implementation handles frames that have `data` and otherwise only checks for a comment, so a frame that is neither reaches nobody. The loss introduced on the morning of 5 August is still there. It hasn't shown up because the providers attached today don't send frames like that.
+Frames carrying only `event:` and `id:` get dropped, though. The final implementation handles frames that have `data` and otherwise only checks for a comment, so a frame that is neither reaches nobody. That loss has been there since the morning of 5 August; it hasn't shown up because the providers attached today don't send frames like that.
 
 All five commit messages just say "improved", so what broke and why it was reverted can only be found by running the code again. What I needed four months later was one line like "this cuts off two characters". There was also no way to check anything between deploys back then. A check that feeds in one stream and compares what comes out would have caught the 15:20 bug before it was committed.

@@ -1,6 +1,6 @@
 ---
 title: 'A file that starts with moof'
-description: 'Re-entering the start function across its await threw away the initialisation segment. I blamed iOS, fixed for it and was wrong; printing the first bytes of the upload settled it.'
+description: 'Re-entering the start function across its await threw away the initialisation segment. I blamed iOS and fixed for it, which did nothing; printing the first bytes of the upload settled it.'
 topic: 'OPIc app'
 date: 2026-09-09
 tags: ['capture', 'MediaRecorder', 'diagnosis']
@@ -23,7 +23,7 @@ Changing the container and getting the same result means the container wasn't th
 
 ## I stopped guessing and added instrumentation
 
-It took being wrong once to admit the order was backwards. Nobody had ever looked at what a failing request actually uploaded.
+It took one miss on iOS before I admitted the order was backwards. Nobody had ever looked at what a failing request actually uploaded.
 
 I added diagnostics that record the leading bytes of the uploaded file, its container header and its effective bitrate whenever a failure occurs.
 
@@ -131,11 +131,11 @@ Recounted properly:
 
 My own test traffic had leaked into a production failure metric. Read in a hurry it shows 3.1%; what actually happened to users was 0.45%.
 
-## What I'll look at tomorrow
+## It needs at least another day
 
 I can't say it's fixed yet. The deploy went out at 12:30 today and in the three hours and fifteen minutes since there have been 39 successes and no failures. The window immediately before it had five failures in seventy, so it looks good, but failures were running at about five a day and three clean hours happens by chance easily enough. I think a full day is the minimum.
 
-I still don't know whether iOS 18 is innocent either. It's a fact that all 11 real failures were iPhones on 18.7. The defect itself is a platform-independent race, but it's plausible that slower microphone-permission handling widens the `await` window and therefore the race. That's a guess, though, and I didn't measure it. Timing `getUserMedia` per device would settle it. I haven't.
+I still don't know whether iOS 18 is innocent either. It's a fact that all 11 real failures were iPhones on 18.7. The defect itself is a platform-independent race, but it's plausible that slower microphone-permission handling widens the `await` window and therefore the race. That's a guess, though. Timing `getUserMedia` per device would probably settle it.
 
 And no user ever reported any of this. Every incident found in this app so far surfaced through logs and alerts; not one arrived as a user report. The user who failed five times within three minutes of signing up didn't send one either.
 

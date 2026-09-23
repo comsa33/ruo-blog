@@ -1,5 +1,5 @@
 ---
-title: 'Measuring the similarity threshold 0.85'
+title: 'Setting the 0.85 similarity threshold from sentence pairs'
 description: 'I started at 0.9, then measured real sentence pairs through the production embedding model and landed on 0.85. The two directions of failure cost different amounts, so the slack went to one side; on the search path I dropped the threshold entirely.'
 topic: 'Agent memory'
 date: 2026-08-22
@@ -10,7 +10,7 @@ The last post was about the memory service attached to an agent. This one is abo
 
 A user says "I'm moving in December" and the model writes that down. But last month it already stored "moving in November". Write a new one, overwrite the old one, or keep both?
 
-The question is whether the two sentences are the same fact, and that's measured with embedding similarity. So from what number up should they count as the same?
+The question is whether the two sentences are the same fact, and that's judged by embedding similarity. So from what number up should they count as the same?
 
 ## Where the number sits
 
@@ -79,7 +79,7 @@ Production disagreed immediately. A user corrected their moving date to December
 
 I'd assumed a higher threshold was safer, but the higher it sat, the more often a correction failed to overwrite the stale memory and both stayed.
 
-## So we measured
+## Checking it with sentence pairs
 
 We collected sentence pairs and scored them with the same embedding model production uses. The pairs fall into four groups, because what we want differs by group.
 
@@ -220,12 +220,12 @@ So search has no absolute threshold, only ordering, and narrowing the results is
   note="<strong>+20%p.</strong> The scope filter was there as a security boundary; it turned out to be a retrieval-quality device too. Removing what is definitely wrong beats cutting by score."
 />
 
-## What this doesn't prove
+## How far this measurement goes
 
 It isn't a significance test; it's a decision-support measurement of whether the empirical distributions of real pairs separate. Embeddings are deterministic, so the same pair always scores the same and repeating the measurement means nothing. The one uncertainty left is whether this sample represents the population.
 
 One of the protected groups is thin. Added-detail has only four pairs, because that shape of memory is rare in the corpus and a second mining pass couldn't grow it. So the 0.006 margin can't be tightened by collecting more samples; it has to be corrected against the score distribution in production logs.
 
-The domain is narrow too. The pairs come from conversations with three work personas, so sentence shapes from other domains were never measured.
+The domain is narrow too. The pairs come from conversations with three work personas, so I don't know whether other domains would give the same values.
 
-Now, when someone asks where 0.85 came from, there's a table to show them. I haven't touched the reframed corrections yet. Before that, since frequent hits near 0.85 would mean raising the threshold, I plan to count how often production logs land there.
+Now, when someone asks where 0.85 came from, there's a table to show them. The reframed corrections probably need something other than a threshold. Before that, I plan to count how often production scores land near 0.85; if they do often, the threshold has to go up.

@@ -153,7 +153,7 @@ Pass a wrong key name to the config object and it's simply ignored, with no erro
 
 All of these are the same kind of failure as in [the previous post](/en/failures-that-dont-throw): nothing throws.
 
-## Debt taken on deliberately
+## A delete path that isn't atomic
 
 The delete path is not atomic. Removing the vector row, writing the history entry and cleaning up run in sequence on separate connections with no transaction. If the first commits and the rest fail, you get a memory that is gone with no record of its deletion.
 

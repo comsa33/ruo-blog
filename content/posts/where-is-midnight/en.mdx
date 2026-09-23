@@ -82,10 +82,10 @@ This wasn't the first time I'd made this mistake. In another project, in an enti
 
 That conclusion was right, but it didn't travel to the next project. When a new repository started, nothing stopped me.
 
-## What is still open
+## Could a lint rule or tests catch this?
 
-I still don't know whether a linter can catch this. A rule banning `setHours(0,0,0,0)` and `getDay()` in server code is writable. But on the client those are the correct calls, so it has to branch on file path, and once a rule grows complicated the exception comments multiply until it stops meaning anything. It doesn't exist yet.
+I still don't know whether a linter can. A rule banning `setHours(0,0,0,0)` and `getDay()` in server code is writable, but on the client those are the correct calls, so it would have to branch on file path, and I suspect that once a rule grows that complicated the exception comments multiply until it stops meaning anything.
 
-I fixed six of these and didn't write a single unit test, and there are still no tests around boundary code. A handful of cases feeding 08:59 and 09:01 KST would have caught all six, and would catch the next break in the same places. That they don't exist is simply something I didn't do.
+I fixed six of these without writing a single unit test. A handful of cases feeding 08:59 and 09:01 KST would have caught all six, and would catch the next break in the same places.
 
 A ranking that won't refresh and credits that refill forever look completely unrelated, so they arrived as separate bugs and were fixed separately. If I'd generalised the sentence "the server's local midnight is 09:00 KST" while fixing the first one, the other five would have been done in a day.

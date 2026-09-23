@@ -211,10 +211,10 @@ I checked whether the ordering problem was really gone with a small reproduction
 
 So what two-phase loading solved is name resolution, not execution order. A top-level `from X import name` still depends on order, while `import X` with attribute access deferred into a function doesn't. Which one you get depends on how the user writes their code, and that isn't something we can enforce.
 
-## What is still open
+## Was importing in-process the right call?
 
-`sys.modules` is process-global mutable state, and we're using it as a deployment state store. Delete a key and someone else's reference goes stale; keep it and edits don't take effect. What we picked is a compromise, delete only when the file has actually changed, and if that call is wrong one of the two symptoms comes back.
+`sys.modules` is process-global mutable state, and we're using it as a deployment state store. Delete a key and someone else's reference goes stale; keep it and edits don't take effect. Between the two we settled on deleting only when the file has actually changed, and if that call is wrong we'll see one of the two symptoms again.
 
-Looking at a single `ModuleNotFoundError`, nothing in the log tells you whether it came from the search path, the module cache, a volume mount or registration order. I still haven't attached a distinct diagnostic to each layer.
+Looking at a single `ModuleNotFoundError`, nothing in the log tells you whether it came from the search path, the module cache, a volume mount or registration order. A distinct diagnostic per layer would probably be enough to tell them apart.
 
-Looking back, I think the bigger decision was importing user code inside our own process, more than doing without a database. Running it in a separate process or container would have removed every bug in this post, at the cost of call latency and resource isolation. We haven't redone that trade-off since. For now we just believe this approach stays within what we can handle.
+Looking back, I think the bigger decision was importing user code inside our own process, more than doing without a database. Running it in a separate process or container would have removed every bug in this post, at the cost of call latency and resource isolation. Whether that trade was right would take another look to say, but for now I think this approach stays within what we can handle.

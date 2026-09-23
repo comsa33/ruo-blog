@@ -140,6 +140,4 @@ Four of the six were caught while still unreleased, by reading the code before a
 
 After release each would have needed a data migration. String timestamps mean converting a ledger that already exists, and for the UTC reference date there's no way to restore relative dates already stored. A memory that stored "tomorrow" a day off isn't recovered by fixing the timezone later.
 
-## What is left
-
-Four of the six used one empty array for both "none" and "couldn't fetch". There may be more of that shape in the code, but I haven't gone through every place that returns an empty array yet. Fixing it properly means splitting the two cases into different types, and that refactor hasn't happened either.
+Four of the six used one empty array for both "none" and "couldn't fetch". I suspect there are more of those in the code, and the proper fix is probably to go through every place that returns an empty array and give the two cases different types.

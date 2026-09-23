@@ -1,6 +1,6 @@
 ---
 title: 'The week signups fell 27% and revenue hit a high'
-description: 'Weekend signups dropped and I went in expecting an outage. It was the seasonal downswing of the whole market, and once I measured the cohorts it turned out this was never a retention business.'
+description: 'Weekend signups dropped and I went in expecting an outage. It was the seasonal downswing of the whole market, and once I pulled the cohorts it turned out this was never a retention business.'
 topic: 'OPIc app'
 date: 2026-09-21
 tags: ['growth', 'cohorts', 'decision']
@@ -15,7 +15,7 @@ The app, a mock test for OPIc, the English speaking exam, makes its money on cre
 
 The first thing I did was pull daily signups from the database. The result was far worse than I expected. It wasn't a dip. From a certain date the signups looked almost cut off. I wondered whether the signup path had died, and for a moment I genuinely believed it was an outage.
 
-What was wrong was the query.
+It wasn't an outage. I'd written the query wrong.
 
 This app's ORM stores `DateTime` as UTC without a timezone. If you put `AT TIME ZONE 'Asia/Seoul'` on that column, Postgres treats the value as if it were already Seoul time and converts it back to UTC. That's the opposite direction from the correct one, so the two are 18 hours apart. The most recent eighteen hours of signups slide into the previous day, today's cell looks empty, and over a few days it reads as if signups had stopped.
 
@@ -137,7 +137,7 @@ The off-season work changes too. A search asset takes four to eight weeks after 
 
 That's the set of principles I wrote down on September 20th. None of it has been tested even once yet. The next peak is March–April, so the result won't be in for half a year. If it turns out then that assets built in the off-season raised peak signups, this post was right. If not, it's a post that used seasonality as an excuse to let six months slide.
 
-The seasonal curve is still someone else's, too. Right now Google Trends is the reference, and I have never yet confirmed the twice-a-year spike from our own signup curve. I've decided to log the three series together once a month, and I think that after the second peak passes we'll be able to read the phase without Trends.
+The seasonal curve is someone else's data, too. Right now Google Trends is the reference, and whether our own signup curve shows the twice-a-year spike will take another peak to find out. I've decided to log the three series together once a month, and I think that after the second peak passes we'll be able to read the phase without Trends.
 
 And this was the second time on the timezone trap. It was in my notes and I stepped on it anyway, so there's no guarantee I won't step on it again. This time I left the correct query behind in a read-only script, but the problem is the day I write a new query by hand.
 

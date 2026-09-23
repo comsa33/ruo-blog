@@ -32,7 +32,7 @@ show = need > 1; // 1/1.05 once shown — so it does not flicker at the edge
 
 The distance is measured from where you're standing rather than from the middle of the country, because the camera puts that city in the centre of the screen.
 
-## Measured, and there was one exception
+## I ran them all, and there was one exception
 
 The journey has 155 stops across 31 countries. I ran all of them.
 
@@ -93,12 +93,12 @@ Pointing became relative instead of absolute. Touching the map used to teleport 
 
 The ISO country label went too. Size it to be legible at 104px and it becomes a signboard when the map opens to 420.
 
-## What is still not done
+## 104px, the hand’s direction, Brussels
 
-104px is still only checked by eye. I looked at it on a phone and left it alone, so it holds up to a look. But a number I picked by eye has now been confirmed by eye, which means it has never actually been measured. There is no size slider either, so I've never seen it beside another value.
+104px is only checked by eye. I looked at it on a phone and left it alone, so it holds up to a look, but a number picked by eye and then confirmed by eye doesn't tell me whether it's right. A size slider, to see it beside other values, would probably make that clearer.
 
 Which way your hand walks is undecided. Reading horizontal position as distance along the route covers every leg of the journey. But where the path doubles back, your hand keeps going right while the marker moves left across the map. That is 29 of 124 legs inside countries. Italy is the worst: four visits to Turin, spreading in every direction, so a single push of the hand sends the marker from Genoa to Bra to Turin to Cinque Terre.
 
 The alternative is to take the nearest point on the route to your hand. The direction is then always right, but sweeping across one height skips whole stretches that sit above or below it. You can't have both. For now I kept full coverage, and if it grates I'll change both maps back together rather than just one.
 
-Brussels still gets nothing. That is the rule working. Whether "your country fits on screen, so you don't need this" is a satisfying thing to tell someone standing in Brussels, I'm less sure. It is one stop out of 155, so it waits.
+Brussels gets no inset. That is the rule working. Whether "your country fits on screen, so you don't need this" is a satisfying thing to tell someone standing in Brussels, I'm less sure. It is one stop out of 155, so it waits.

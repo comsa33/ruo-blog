@@ -316,13 +316,23 @@ It is **not** required to be a closing `## 남은 것` section with bolded parag
 openers. Twelve of the first thirteen posts ended that way and the shape became
 a form to fill in.
 
-What became a form was the shape, not the label. `## 남은 것` repeating across
-posts is fine — it is a section label, like `Limitations` in a paper, and a
-reader scanning for what is still broken should find it where they expect. Do
-not rename it to something evocative; a heading that does not say what is under
-it is worse than a repetitive one. Vary instead whether the section exists at
-all: on some posts fold the unresolved parts into the body where they come up,
-or give them one closing paragraph with no heading.
+The label went too. An earlier version of this file defended `## 남은 것` as a
+neutral section label; the author says it is not his expression and reads as a
+model's (2026-09-23). The same goes for its siblings (`## 못 고친 것`,
+`## 갚기로 하고 남겨둔 것`). Give the section a heading that names what is in it,
+in his register — a question, the way his own technical headings are
+(`## 린트나 테스트로 막을 수 있을까`), or a plain statement
+(`## 받는 쪽은 그대로 뒀다`) — or fold it into the last section with no heading.
+A heading that does not say what is under it is still worse than any of these.
+
+Do not write the open items as an inventory of absence either: "그런 검사는
+아직 없다", "그 리팩터링도 하지 않았다", "콘솔은 지금도 ~라고 표시한다", one
+after another. Swapping `아직 없다` for `안 했다` keeps the same sentence. Say
+what would have caught it or what would settle it — "~가 있었다면 첫날에
+보였을 것이다", "~해 보면 알 수 있을 것 같다" — and keep `아직 모른다` for real
+uncertainty. The `my-writing-style` skill lists the other words that give a
+draft away (`재봤다`, `틀렸다` for every mistake, `모양` as a metaphor,
+`~했을 뿐이다`).
 
 #### Budgets
 
