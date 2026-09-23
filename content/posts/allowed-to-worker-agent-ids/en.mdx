@@ -4,7 +4,7 @@ description: "An A2A orchestrator's worker list was used to block calls too, and
 topic: 'Dynamic execution engine'
 date: 2026-09-23
 tags: ['routing', 'A2A', 'decision']
-draft: true
+draft: false
 ---
 
 When I wired the execution engine's agents so they could call each other over A2A, each orchestrator agent got a list of the workers it uses. The field started out as `allowed_agent_ids` and is now `worker_agent_ids`. The rename took three days, and in that time the list went from doing two things to doing one.
