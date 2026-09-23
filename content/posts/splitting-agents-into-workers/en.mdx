@@ -71,7 +71,7 @@ During this period the orchestrator was a sandbox-code version of the tool loop 
 
 ## Day one, four workers
 
-The first orchestrator had four workers: web search, coding, query preprocessing and image generation. I sent "what's Samsung Electronics' share price today," and the LLM chose web search, but at first the answer came back empty. The gateway call that returns the worker's result to the LLM got a 400 (the matching `tool_use` wasn't there before the `tool_result`). With that fixed, the sandbox streamed 169 characters and the screen showed zero. Only after fixing that too did the answer come out: ₩261,000.
+The first orchestrator had four workers: web search, coding, query preprocessing and image generation. I sent "what's Samsung Electronics' share price today," and the LLM chose web search, but at first the answer came back empty. The gateway call that returns the worker's result to the LLM got a 400 (the matching `tool_use` wasn't there before the `tool_result`). With that fixed, the sandbox streamed an answer and not a single character reached the screen. Only after fixing that too did the answer come out: ₩261,000.
 
 I also sent "find today's Samsung Electronics price on the web, then work out in code what it would be after a 15% rise." The LLM called web search, then the coding worker, and the answer vanished. The execution engine had passed the caller's request ID straight through to the worker, and since the chat service keys its stream on that ID, the worker finishing closed the orchestrator's stream too. It has the same root as [the channel keyed on the request ID](/en/a-channel-named-after-the-wrong-thing), and this engine had already been through that from handing a request ID down unchanged. Once each worker got a fresh ID, the answer was ₩300,150. The LLM had taken the ₩261,000 from web search and put it into the coding worker's query on its own.
 
@@ -97,7 +97,7 @@ That afternoon I kept splitting the worker roles again. I'd been thinking of the
 
 ## The existing attachment agent didn't work as a worker
 
-Asked about an attachment, the orchestrator called the large-attachment analysis agent we'd built separately for that purpose, one that reads documents in map-reduce chunks. The answer was 36 characters: "there is no attached document I can read." That agent's card said:
+Asked about an attachment, the orchestrator called the large-attachment analysis agent we'd built separately for that purpose, one that reads documents in map-reduce chunks. The answer was a single sentence: "there is no attached document I can read." That agent's card said:
 
 > Don't call this when the caller can't pass the file along (via A2A) — it comes back empty-handed.
 
