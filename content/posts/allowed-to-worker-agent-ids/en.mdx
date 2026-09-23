@@ -1,0 +1,119 @@
+---
+title: 'How allowed_agent_ids became worker_agent_ids'
+description: "An A2A orchestrator's worker list was used to block calls too, and three days later that came out. It was a guard set up in advance for a customer requirement, and it got in the way of the one in front of us: being callable from outside."
+topic: 'Dynamic execution engine'
+date: 2026-09-23
+tags: ['routing', 'A2A', 'decision']
+draft: true
+---
+
+When I wired the execution engine's agents so they could call each other over A2A, each orchestrator agent got a list of the workers it uses. The field started out as `allowed_agent_ids` and is now `worker_agent_ids`. The rename took three days, and in that time the list went from doing two things to doing one.
+
+| What the list does                                 | Sept 18 | From Sept 21 |
+| -------------------------------------------------- | ------- | ------------ |
+| Narrows the catalog to that orchestrator's workers | yes     | yes          |
+| Rejects a call to a worker that isn't on the list  | yes     | no           |
+
+## At first it blocked calls too
+
+On the morning of September 18 I took what the lead and I had discussed the day before to the agent.
+
+> The idea is, if you make it an orchestrator type and register in the console (new) that this orchestrator will only use certain A2A agent cards, then this orchestrator can only access a registry where it sees just those cards. Is that possible? We also agreed the first implementation is internal only... external A2A connections come in the next version...
+
+The ask was about the catalog. When an orchestrator reads the catalog, it gets only the cards of the workers on its list.
+
+The agent suggested adding one more thing on top.
+
+> If you only filter the catalog, the workers are just invisible — they can still be called, so it isn't control. The check is one Redis lookup, so it costs nothing.
+
+It came with a caveat: trusting a header to say who's calling only holds while this is internal, and the next version, which opens it to outside callers, would need to switch to token claims. I went with it. The receiving server has to know who called before it can decide whether to allow or reject the call, so of course it should be there, I thought. It also meant being ready in advance if some customer later asked for workers that particular orchestrators must not be able to reach. That's how the sentence "what you can't see and what you can't call have to line up, or it isn't control" ended up in four places in the design docs. The agent wrote that sentence. The PoC that day confirmed that another orchestrator id got an empty catalog, and that calling an off-list worker directly returned TaskNotFound.
+
+The engine knew which orchestrator was calling from the `orch-agent-id` header. Inside the company the chat service already sends that header on multi-agent calls, so there was nothing extra to do.
+
+## A request to remove it
+
+On the afternoon of September 21 the lead asked for `orch-agent-id` to be removed from the A2A call parameters. The orchestrator already carries the workers it can call as a list, so why does it need this header at all? I argued it had to stay. If the receiving side doesn't know who called, it can neither allow nor reject.
+
+So I asked the lead for the underlying reason. The answer was generality. Later, when someone outside our system calls our A2A, making a parameter that only our internal system uses required will cause problems. An outside client doesn't know what that header is and has no way to send it. I accepted that, and explained it to the agent like this:
+
+> If orch-agent-id is there, then when outside parties call our agents over A2A they can't make the call... people outside might go "what on earth is that parameter," and the call won't work anyway... so the intent is to make them callable from outside. We handle it assuming our gateway service has already finished authentication before it gets to us..
+
+The agent laid out two options, keeping the header as optional or dropping the call check altogether, and summed the check up as a functional control, not a security boundary.
+
+> Let's go with 2. Then allowed_agent_ids should be renamed too, right?
+
+## Verifying it seemed like too much
+
+If someone outside calls our A2A, they come in through our gateway with authentication done. I took that part as safe. Then, inside our service, the main purpose of the list is for an orchestrator to know the scope of workers it calls, and having the server verify and reject calls from anything but the registered orchestrator seemed like overkill.
+
+Blocking calls in the first place had been preparation in case some customer asked for worker access to be split by orchestrator. I couldn't ignore the requirement in front of us for one that didn't exist yet.
+
+It became `worker_agent_ids`. The list is no longer an allow list; it's the set of workers the orchestrator puts on as tools. Records saved under the old name still read fine, so everything registered on the dev cluster kept working without being migrated.
+
+## The header was still there as optional
+
+The next morning I asked this too.
+
+> Just wondering, is there a reason orch-agent-id was made optional on `/a2a/agents/{agent_id}/jsonrpc` instead of not being accepted at all? Is it because it's needed internally?
+
+The agent said it wasn't needed internally; it was a leftover it hadn't fully removed. While we were settling the direction the day before, it had started with an edit making the header optional, and that part stayed in after we decided to drop the call check altogether.
+
+While we were at it, the header rules got redone. Internal headers coming down from above aren't interpreted by the A2A endpoint; they're passed on to the worker. What gets replaced or dropped is the request ID, the trace chain, and a few headers carrying the caller's own execution state. Handing a request ID down unchanged and tangling a stream is something this engine had [already been through](/en/a-channel-named-after-the-wrong-thing), and it happened again on the first day of this PoC. I also asked for the header rules to be written up in Swagger to the standard, so people on other services could tell from that alone. The catalog is now the only place that reads `orch-agent-id`.
+
+The rename had a small cost. Another agent session registering workers got confused sending `allowed_agent_ids` and finding `worker_agent_ids` in the stored record, and because the registration API replaces the whole record, it nearly wiped an existing skill description while trying to change just the list. Since then the registration script reads the record first, sends it back with only the list changed, and stops if the skill it read is empty.
+
+## So where is the control now?
+
+With the list no longer blocking calls, a worker that isn't in your catalog can still be called if you know its id. Internal calls happen inside the cluster, where the headers are trusted. External calls assume the gateway has finished authentication and inserted the user id. The execution engine can't tell whether a request came from inside or outside. So the gateway's job is written down in Swagger: after authenticating, insert the user id and strip every internal header the client sent. If it doesn't strip them, an outside client could send someone else's conversation log id and attach a worker run to that log.
+
+<Structure
+  nodes={[
+    { id: 'ext', label: 'External A2A client', col: 0, row: 0 },
+    {
+      id: 'gw',
+      label: 'Gateway',
+      sub: 'auth · strip · inject',
+      col: 1,
+      row: 0,
+      accent: true,
+      note: 'After authenticating, inserts the user id and strips every internal header the client sent. With call control gone from the list, control over external calls moved here. The only path it exposes is /a2a/*.',
+    },
+    {
+      id: 'orch',
+      label: 'Internal orchestrator',
+      sub: 'cluster trust',
+      col: 0,
+      row: 1,
+      note: 'Calls from inside the cluster. The headers the chat service attaches are trusted as they are. worker_agent_ids is only used to narrow the catalog.',
+    },
+    {
+      id: 'a2a',
+      label: 'Engine /a2a/*',
+      sub: 'catalog · jsonrpc',
+      col: 2,
+      row: 0,
+      note: "Any enabled agent can be called by anyone. It can't tell whether a request came from inside or outside.",
+    },
+    {
+      id: 'reg',
+      label: 'Registry /_a2a/*',
+      sub: 'PUT · DELETE',
+      col: 2,
+      row: 1,
+      note: "The API for registering and editing cards. It has no authentication, so it isn't exposed through the gateway. Its path was moved so it shares no prefix with the call API.",
+    },
+    { id: 'worker', label: 'Worker', col: 3, row: 0 },
+  ]}
+  edges={[
+    { from: 'ext', to: 'gw' },
+    { from: 'gw', to: 'a2a', label: 'after auth' },
+    { from: 'orch', to: 'a2a', label: 'internal headers' },
+    { from: 'a2a', to: 'worker', label: 'SendMessage' },
+    { from: 'reg', to: 'a2a', label: 'cards', dashed: true },
+  ]}
+  hint="Hover a node to see its connections and notes."
+/>
+
+The API for registering and editing cards moved to fit the same premise. It used to sit under the same `/a2a` as the call API, so if the gateway exposed `/a2a/*` wholesale, the unauthenticated write API would go out with it. Through code review it went from `/a2a-registry` to `/internal/a2a-registry` to `/_a2a`. `/a2a-registry` still matches `/a2a` wherever paths are compared as string prefixes, as in nginx or Envoy, and `internal` is a common enough word that a customer might already be using it as an agent name. An agent name hiding a path is something I'd already run into with [Mount prefix matching](/en/mounted-but-unreachable).
+
+Right now, the gateway stripping internal headers is a requirement written in Swagger. On the day external calls open, I think calling from an outside client with internal headers attached will show whether it really strips them.

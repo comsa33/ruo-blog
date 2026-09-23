@@ -153,7 +153,7 @@ One of the rules is to respond immediately and confirm later, but if the confirm
 
 At the end of July a one-star review landed. The mic test couldn't hear their voice but the app said it was working fine, and on the results screen an answer they never gave was shown as theirs. It ended with "isn't this fraud". The cause was silence. With the microphone picking up nothing, the app displayed recording in progress, sent the silent file straight to the AI, and the AI made up a normal-length answer. At the time I put in four layers of level measurement and silence blocking to stop it.
 
-In early September the same structure showed up once more. Safari stops the recorder on its own during a background switch or a phone call, but the recording state on screen was React state, so it stayed put. The user keeps talking, not knowing it's cut off. The pause and resume handling trusted React state alone and never looked at the recorder's actual state.
+In early September a problem with the same structure came up again. Safari stops the recorder on its own during a background switch or a phone call, but the recording state on screen was React state, so it stayed put. The user keeps talking, not knowing it's cut off. The pause and resume handling trusted React state alone and never looked at the recorder's actual state.
 
 Neither of those happened because I didn't know the rule. It's that I fixed them as two separate bugs and never named them as the same kind. The rules document gave them the name. When what the UI shows and what the device is doing come apart, you don't swallow the exception. You bring the state back to reality and tell the user.
 

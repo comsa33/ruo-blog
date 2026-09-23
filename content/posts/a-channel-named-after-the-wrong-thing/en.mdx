@@ -12,7 +12,7 @@ Code written by a user runs inside an agent, and that code can call another agen
 I ran a single line: `print("Hello World")`. The model produced five tokens — `print`, `("`, `Hello`, ` World`, `")`. The browser received 195 SSE events.
 
 <Compare
-  caption="One run, two numbers"
+  caption="Two numbers from the same run"
   beforeLabel="SSE events the browser received"
   afterLabel="Tokens the model actually produced"
   before={195}
@@ -124,7 +124,7 @@ The first value in `x-request-traces` stays the original. The publish target is 
 
 The parallel case ended the same shape. When the shared parallel client builds per-task headers, it derives the request ID as `{original}-{call name}-{8 random chars}`. Read the name and you can see which original it branched from and which call it is.
 
-<Callout label="The second line of defence that was there and did not work" accent>
+<Callout label="A condition that was there and did not work" accent>
 That subscription actually has one more condition on it. A request carries the name of the agent that started the call and the agent currently handling it, and it subscribes only when they match. In a nested call they should differ — and had they differed, the inner service would never have subscribed.
 
 But an empty header is filled in with its own name, looked up from the database. The inner call did not carry those headers, so the two values became equal. This bug needed both the channel name and this condition to fail at once, and both did.

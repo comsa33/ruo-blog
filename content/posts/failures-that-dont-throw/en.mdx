@@ -103,7 +103,7 @@ The vendored code computed that reference in UTC.
   meeting tomorrow" at half past midnight, and the memory records a meeting today.
 </Callout>
 
-Someone suggested setting the pod timezone to `Asia/Seoul`. We didn't, because that setting would have to be verified on every deploy, and if it's missed once, anywhere, the same bug comes back silently.
+Someone suggested setting the pod timezone to `Asia/Seoul`. We didn't, because that setting would have to be verified on every deploy, and if it's missed anywhere, the same bug comes back silently.
 
 The reference date is pinned to UTC+9 in code instead. Korea has had no daylight saving since 1988, so the value is always correct.
 
@@ -126,7 +126,7 @@ There were three more of the same character, all caught before deployment.
   />
 </Metrics>
 
-The third is the nastiest. Paging through, some items appear twice and others never appear at all — and querying once looks completely fine.
+The `LIMIT` without an ordering is the nastiest. Paging through, some items appear twice and others never appear at all — and querying once looks completely fine.
 
 ## What they share
 

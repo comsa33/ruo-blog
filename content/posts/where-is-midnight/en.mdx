@@ -76,7 +76,7 @@ Storage stayed UTC and only the boundary computation changed. There was no schem
 
 There was a one-time effect. Moving the week start nine hours earlier pulls Sunday-night activity into the current week. That favours users, so it stayed. Stored review dates were not backfilled; the next review overwrites them, and until then a card appears at most nine hours late.
 
-## I made this mistake for the second time
+## I made the same mistake again
 
 This wasn't the first time I'd made this mistake. In another project, in an entirely different codebase, the reference date for a user's utterance was being computed in UTC. The symptom then was also "between 00:00 and 09:00 Korean time". The conclusion then was to stop relying on the pod's timezone setting and pin the offset in code.
 

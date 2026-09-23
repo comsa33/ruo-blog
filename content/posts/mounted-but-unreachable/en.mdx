@@ -160,6 +160,6 @@ Until then the alias field was declared as a plain string with no format check. 
 
 What made it worse was that the bad input was recorded as a success. The registration API returned 200, the console showed deployed, and the route was really created, so every signal a user could see said fine. The sign that something was wrong came hours later as a 404 on a different agent, somewhere that looked unrelated to the cause.
 
-Now that registration blocks it, no new collision can happen. But the console's "deployed" only goes as far as "the file was written and the route was registered", so nobody checks that the route can actually be reached. A post-deploy check that calls the agent once would have surfaced this right after registration.
+Now that registration blocks it, no new collision can happen. But the console's "deployed" only goes as far as "the file was written and the route was registered", so nobody checks that the route can actually be reached. A post-deploy check that calls the agent would have surfaced this right after registration.
 
 Because the defect depends on order, it's also hard to catch with a test ahead of time. The reproduction above was written after the cause was known, and catching it without knowing the cause would have meant thinking up a test that registers two agents in one specific order. That `Mount` matches by prefix and the router takes the first match is in the documentation, but it was only after reproducing it that I connected that to "allowing a slash in an alias makes some agent permanently unreachable".

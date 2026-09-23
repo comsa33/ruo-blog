@@ -1,6 +1,6 @@
 ---
-title: 'Five fixes to SSE frame parsing in one day'
-description: 'The same ten lines were rewritten five times in 24 hours. The raw-passthrough version, the only one that lost nothing, was gone in under two hours — and the code kept changing because it lived inside a generated template string.'
+title: 'A day of fixing SSE frame parsing'
+description: 'The same ten lines were rewritten again and again in 24 hours. The raw-passthrough version, the only one that lost nothing, was gone in under two hours — and the code kept changing because it lived inside a generated template string.'
 topic: 'Dynamic execution engine'
 date: 2025-12-12
 tags: ['streaming', 'SSE', 'diagnosis']
@@ -22,7 +22,7 @@ Between 10:17 on 4 August 2025 and 10:01 the following morning, the code in one 
 | 8/4 17:21 | Restore the buffer and introduce an SSE event regex                         |
 | 8/5 10:01 | Remove the regex. Split on `"\n\n"`, forward only frames containing `data:` |
 
-Two mechanisms were added and then taken back out. The buffer lasted seventeen minutes; the regex lasted until the next morning.
+Some mechanisms were added and then taken back out. The buffer lasted seventeen minutes; the regex lasted until the next morning.
 
 Every commit message just says "improved", so none of them says what broke or how. Given the same stream, the four versions do this.
 
@@ -93,7 +93,7 @@ Raw passthrough forwards the stream untouched, so it can't do any of that. And m
 
 ## The code lived inside a string
 
-I think where the code lived is part of why it was touched five times in one day. The relay logic sat inside a string in a generation template, and the server used that template to stamp out a file for each provider.
+I think where the code lived is part of why it was touched so often in one day. The relay logic sat inside a string in a generation template, and the server used that template to stamp out a file for each provider.
 
 <Structure
   hint="Hover a node to keep only what it connects to"

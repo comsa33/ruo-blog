@@ -199,7 +199,7 @@ A, B and C came out in English wherever the instruction went, and the only one t
 
 ## The cause was fourteen examples
 
-The prompt was 33,661 characters and contained fourteen English few-shot examples. The word `language` appeared zero times in all of it, and there wasn't a single Korean character. Nobody knew that until I read the prompt from the top to shrink it.
+The prompt was 33,661 characters and contained fourteen English few-shot examples. The word `language` appeared nowhere in it, and there wasn't a single Korean character. Nobody knew that until I read the prompt from the top to shrink it.
 
 My guess is that fourteen demonstrations of "take Korean, write English" simply weighed more than one line of instruction.
 
@@ -250,7 +250,7 @@ I cut the examples to three and made one of them a Korean input/output pair.
 
 ## Measurements
 
-Two rounds on synthetic data, then a third on six real conversation threads. A/B order was reversed and run twice to cancel position bias.
+Synthetic data first, then six real conversation threads at the end. A/B order was also run reversed to cancel position bias.
 
 <Compare
   caption="Prompt length"

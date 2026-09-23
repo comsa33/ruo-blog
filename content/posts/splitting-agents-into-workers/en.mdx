@@ -1,0 +1,190 @@
+---
+title: 'An orchestrator that splits purpose-built agents into A2A workers'
+description: 'We used to build a separate agent for RAG, for searching large attachments, for table search. Now small workers are handed to one orchestrator as tools. In dev-cluster testing it never picked the wrong worker, and each fix landed on one worker.'
+topic: 'Dynamic execution engine'
+date: 2026-09-23
+tags: ['routing', 'A2A', 'design']
+draft: true
+---
+
+Before A2A, giving one agent several abilities meant writing its conversation flow as a state machine. You draw the flow, hang conditions on it, pack complicated logic into the Python sandbox, and run a fixed loop. Working out whether it answers better this way or that way took a lot of testing, and as soon as a user threw a question that was a bit more complex or not what we'd expected, it tended to lose its way. We also built a separate agent for each purpose: a RAG agent, an agent that searches large attachments, a RAG agent for tables.
+
+After switching to A2A and trying it on the dev cluster, one orchestrator handed small agents as tools — a retriever, an attachment retriever, image analysis, web search — does all of that. Adding or changing a worker happens module by module, so it's easy, and when something goes wrong you follow it to the agent where it went wrong and fix just that one. Right now the PoC is being verified on the dev cluster while the other parts are built; it's before any production rollout.
+
+This is the record of that PoC, from September 18 to 22. The test log holds 77 conversations sent through two orchestrators.
+
+## One card instead of a flow
+
+<Structure
+  nodes={[
+    { id: 'user', label: 'User', col: 0, row: 0 },
+    {
+      id: 'orch',
+      label: 'Orchestrator',
+      sub: 'sandbox code',
+      col: 1,
+      row: 0,
+      accent: true,
+      note: 'Reads the catalog every turn and turns each card into one tool. No per-worker branching. During this period it was a sandbox-code version of the tool loop that will later live in the chat service.',
+    },
+    {
+      id: 'gateway',
+      label: 'Model gateway',
+      sub: 'LLM',
+      col: 2,
+      row: 0,
+      note: 'Takes the tool list and returns a tool call. All the LLM sees is a tool name, a one-line description and a few arguments.',
+    },
+    {
+      id: 'catalog',
+      label: 'Catalog',
+      sub: 'N Agent Cards',
+      col: 1,
+      row: 1,
+      note: "Returns only the cards on the orchestrator's worker list. Cards aren't stored; they're assembled from registry records per request.",
+    },
+    {
+      id: 'workers',
+      label: 'Workers',
+      sub: 'A2A SendMessage',
+      col: 2,
+      row: 1,
+      note: 'Agents like web search, coding, image generation and a retriever. Each runs in its own conversation thread. The result goes back to the LLM as a tool result.',
+    },
+  ]}
+  edges={[
+    { from: 'user', to: 'orch', label: 'question' },
+    { from: 'orch', to: 'catalog', label: 'every turn' },
+    { from: 'orch', to: 'gateway', label: 'card → tool' },
+    { from: 'gateway', to: 'orch', label: 'tool call', dashed: true },
+    { from: 'orch', to: 'workers', label: 'SendMessage' },
+  ]}
+  hint="Hover a node to see its connections and notes."
+/>
+
+Every turn, the orchestrator pulls its workers' Agent Cards from the catalog and turns them into LLM tools. The tool description is one line, `card name. skill description when to use: when_to_use e.g.: example1 / example2 …`, and at first the only argument was a `query` string. When the LLM picks a tool, the orchestrator sends that worker an A2A `SendMessage` and hands the result back as a tool result. What the state machine's flow and conditions used to do, the LLM now does by reading the cards. Adding a worker means nothing to change in the orchestrator; it shows up in the catalog from the next turn.
+
+So the only thing the LLM has to tell the workers apart is the card text. That's why registration refuses a card whose skill description or `when_to_use` is empty, or which has fewer than three examples, and why the design doc said:
+
+> The real risk in A2A isn't the technology, it's card quality. A weak card doesn't show up as an error. It shows up as nobody calling it.
+
+During this period the orchestrator was a sandbox-code version of the tool loop that will eventually live inside the chat service. It calls the model gateway directly and skips the chat service. That difference causes trouble on the first night.
+
+## Day one, four workers
+
+The first orchestrator had four workers: web search, coding, query preprocessing and image generation. I sent "what's Samsung Electronics' share price today," and the LLM chose web search, but at first the answer came back empty. The gateway call that returns the worker's result to the LLM got a 400 (the matching `tool_use` wasn't there before the `tool_result`). With that fixed, the sandbox streamed 169 characters and the screen showed zero. Only after fixing that too did the answer come out: ₩261,000.
+
+I also sent "find today's Samsung Electronics price on the web, then work out in code what it would be after a 15% rise." The LLM called web search, then the coding worker, and the answer vanished. The execution engine had passed the caller's request ID straight through to the worker, and since the chat service keys its stream on that ID, the worker finishing closed the orchestrator's stream too. It has the same root as [the channel keyed on the request ID](/en/a-channel-named-after-the-wrong-thing), and this engine had already been through that from handing a request ID down unchanged. Once each worker got a fresh ID, the answer was ₩300,150. The LLM had taken the ₩261,000 from web search and put it into the coding worker's query on its own.
+
+I checked parallel calls too. Asking for the share price and, separately, a picture of a whale put both workers in the same round. Web search took 23.6 seconds, image generation 41.7, and the whole thing 42.5. The 65.3 seconds to compare against is the two numbers added up, not a sequential run I actually did, and completion was detected by polling every three seconds, so it can be up to three seconds late.
+
+That night, in a multi-turn run, it failed to call a worker for the first time. Turn one got the share price. Turn two said "take the price you just gave me, what's it after a 15% rise? Work it out in code." It didn't call the coding worker; it asked me what the price was. The agent first thought the worker's contextId was being reset every turn, then after checking corrected itself: the orchestrator had no conversation history of its own. Because the sandbox called the gateway directly, the history the chat service normally attaches wasn't there. In the meantime I'd asked whether the workers get history either.
+
+> Do the sub-agents get the history and handle it? (…) If not, the Python sandbox code would have to implement history separately, like the other ones do, for them to remember the earlier context
+
+The agent checked worker by worker and said I was right about that too. After the orchestrator started reading its history, similar turn-two questions (15%, 20%, 30%, 25%) all went to the coding worker. The cards and the prompt stayed as they were.
+
+## Splitting internal-docs search into workers
+
+On September 21 I built a second orchestrator for searching internal documents. The test was to take what one RAG agent used to do and split it into workers. It started with three, a retriever, an index catalog and web search, and had seven by the next day.
+
+The index catalog is a worker that picks which of our internal vector indexes fits a question. There are hundreds of indexes and no way to know which one to look at, so I figured a separate agent that fetches the index list would do it. The first version had an LLM in it that picked up to five indexes, and the retriever searched whatever names it was handed.
+
+The first difference that showed up was sources. The existing single-agent RAG setups show sources along with the answer, and this orchestrator didn't. It was renumbering the passage ids the retriever returned for display, and having it keep the real ids fixed that.
+
+Next came a question about something in the internal docs plus the weather in Seoul. When the index catalog couldn't find a matching index, the orchestrator answered "I couldn't find this in the internal documents" without ever calling the retriever. The catalog's card said "use this before the retriever when you don't know which index to search." It did call the catalog first, as the card said, and stopped when that came back empty. The agent added a line to the orchestrator prompt saying to call the retriever, even without an index, when the catalog finds nothing, and the next run was correct. The card stayed as it was, so from then on the card and the prompt pointed in opposite directions.
+
+That afternoon I kept splitting the worker roles again. I'd been thinking of the retriever as a worker that just fetches passages from the search engine, and it turned out that without an index it searched only a default one. A general-purpose worker should require an index, I thought, so I made it required. That put the card out of step with the worker. The card still said "searches only the default index if none is given," and the orchestrator called the retriever with no index. It didn't help that the prompt said to put a JSON string in `query` and the LLM sent plain text. That one was fixed by pulling the index names out into their own tool argument and having code build the JSON.
+
+## The existing attachment agent didn't work as a worker
+
+Asked about an attachment, the orchestrator called the large-attachment analysis agent we'd built separately for that purpose, one that reads documents in map-reduce chunks. The answer was 36 characters: "there is no attached document I can read." That agent's card said:
+
+> Don't call this when the caller can't pass the file along (via A2A) — it comes back empty-handed.
+
+So it called a worker the card had warned against. But the warning was already out of date. That agent had been given support for taking input over A2A, and its card was never re-registered. The reason it came back empty was on the orchestrator's side: the tool's only argument was `query`, so there was no way to pass a file. The next question asked for a flow diagram as well, and it didn't call image generation either. Seeing that, I asked:
+
+> I'm trying to build the worker agents as micro as possible, with no overlapping functions. Is it right to use the map-reduce agent? Or should I break that agent down into smaller agents?
+
+Right after, I looked at the screen again, saw junk in the sources area, and said "there's something weird attached to the sources." That agent was publishing its own output straight onto the orchestrator's screen; the agent found the leak. It was built to see an answer through on its own, and I think that meant it did too much when it was being called as someone else's tool. I went with smaller. A new worker returns only the relevant passages from an attachment, verbatim. Its card says it only works if the file is passed along, and the tool got an argument for passing files. The old agent came off the list. After that, quoting an attachment and drawing its contents as a flowchart both came out right.
+
+With the workers in that shape, I asked for three things together. Find the number of steps in one section of the attached document, find what the state machine's components are in the internal docs, check today's weather in Seoul on the web, and finally work out in code the number of steps times seven.
+
+In the first round, attachment quoting, the index catalog and web search were called at the same time, then the retriever and coding. Five kinds of worker ran on one question, and 29.5 seconds later all four answers (4, states/transitions/intents, the weather, 28) came back with nine sources. The old way, the attachment, the internal docs and the web would each have been a different agent's job.
+
+## Fixing one worker at a time
+
+Right after that, I asked it to find a search scoring formula in the internal docs, compute it in code and draw a diagram, and the orchestrator kept calling the index catalog and ended without calling the retriever, coding or image generation. The cause the agent found was that the index names didn't contain the search service's name, so the LLM choosing by name came back empty each time. Fixing the catalog and orchestrator prompts first changed nothing; the next run failed the same way. Only a fix to the catalog's query got it through, and after seeing that I asked:
+
+> So wouldn't it be better if the index search agent just returned the whole index list? If we're looking at roles as micro, why attach an LLM at all?
+
+The LLM came out of the catalog. It returns all 219 indexes as they are, and choosing is the orchestrator's job. After that, asked to find an apartment sales notice in the internal indexes, the orchestrator picked the index from the 219 on its own. Half an hour or so later, though, it picked one of the test indexes made during development, with names like the first line of the national anthem, and pulled ten sources out of it. The catalog now filters out test indexes, which took the list down to 79.
+
+There was also a case of the right worker with the wrong argument. A question I'd sent from the chat screen had gone out to web search as "as of June 2024," so I asked:
+
+> Why is it searching as of June 2024?
+
+Resending it as a question comparing major banks' mortgage rates, the query the orchestrator passed to web search contained "as of September 21, 2024." Putting the current time near the end of the prompt didn't fix it. Moving it to the very front of the system prompt and having code correct the year did. The agent had put it down to the model's training cutoff but got the wrong model, and I pointed out later that the 2024 came from the agent's default model.
+
+The same question also gave different results. Asked for this year's Nobel literature laureate from the internal docs, it found nothing in the retriever and went on to web search, but when I sent the same question again it stopped at the retriever and answered from an irrelevant passage.
+
+> So when a RAG task comes in, if the retriever search has no information, does the orchestrator try something else? Is that the orchestrator's non-determinism?
+
+The agent traced the cause itself. A rule it had added to stop the repeated index catalog calls, "don't repeat the same query to the same tool," was also stopping re-searches. A new rule says that when evidence is thin, rephrase or split the query and search again, with a cap, and when a worker comes back empty, code appends "no evidence" to the end of the tool result. In a later question the orchestrator split its query in two and searched again.
+
+The next day, image viewing, which had been a tool inside the orchestrator, became a worker of its own. That's how it got to seven workers.
+
+## Where the fixes went
+
+In the 77 conversations in the test log, it never picked the wrong worker. There were eight cases of failure on the side of choosing and calling workers, and most were a worker it should have called and didn't, or the right worker with the wrong argument. There were other failures, where the answer came back empty or got lost, on top of these.
+
+| Case | Symptom                                  | Kind                       | Fixed in              |
+| ---- | ---------------------------------------- | -------------------------- | --------------------- |
+| A    | Forgot the previous turn and asked back  | not called                 | orchestrator history  |
+| B    | Said "not found" after an empty catalog  | not called                 | prompt                |
+| C    | Called the retriever with no index       | argument                   | tool argument         |
+| D    | Called a worker without passing the file | worker the card warned off | new worker + file arg |
+| E    | Kept calling the catalog, then gave up   | not called                 | catalog worker        |
+| F    | 2024 date in the query                   | argument                   | prompt + code         |
+| G    | Picked a test index                      | argument                   | catalog worker        |
+| H    | Didn't re-search on the same question    | not called                 | prompt + code         |
+
+<Breakdown
+  caption="Where the eight cases were fixed"
+  segments={[
+    {
+      label: 'Changed a worker',
+      value: 3,
+      note: 'New attachment-quote worker, LLM removed from the index catalog, test indexes filtered',
+    },
+    {
+      label: 'Prompt and code',
+      value: 3,
+      note: 'Call the retriever even when the catalog is empty, current time at the very front, a no-evidence signal',
+    },
+    {
+      label: 'Tool argument',
+      value: 1,
+      note: 'Index names pulled out of query, JSON built by code',
+    },
+    { label: 'History', value: 1, note: 'The orchestrator reads its own history' },
+    {
+      label: 'Existing card text',
+      value: 0,
+      note: 'None of the eight was fixed by rewording an existing card',
+    },
+  ]}
+  hint="Hover a segment to see what it holds."
+/>
+
+Each fix landed on one worker or one spot in the prompt. When the index catalog acted up, I looked only at the catalog; when attachments failed, only at the attachment worker. In an agent written as a state machine, everything was tied into one flow, and pulling things apart like this was hard.
+
+Card quality, the thing the design worried about most, wasn't a problem in this period's record. Every card was drafted and registered by an agent. My part was creating the empty agents, handing over their ids, and deciding which workers there should be. As of the 22nd, four cards don't match what their workers actually do. The retriever and index catalog cards still describe them as they were before the index became required and the LLM came out, and the other two are about how sources get numbered and a worker's old name. None of the four has a record of causing a wrong-worker pick. The retriever card being out of date was one of the reasons case C called it without an index.
+
+## What the dev cluster did and didn't show
+
+I think the lack of wrong picks owes a lot to the number of workers and how their roles were split. There were seven at most, and I kept splitting them so the roles wouldn't overlap. When the jobs are clearly separate, like web search and the retriever, or quoting an attachment and viewing an image, choosing among them doesn't seem hard for an LLM. Most of the eight came after the choice: whether to call again after coming back empty, and what to pass.
+
+There are reasons not to take this at face value, though. These were dev-cluster conversations, and every card was written by an agent following the same template. Which model ran each turn mostly wasn't recorded, and a few conversations don't record which worker was called. The orchestrator is also a version written first as sandbox code. When the next stage moves this loop into the chat service's tool loop, the chat service will attach history, so I'd expect case A to go away on its own, but we'll only know once it's moved.
+
+The query preprocessing worker on the first orchestrator sat in the tool list for the whole PoC. I think sending a few questions that need preprocessing would show whether its card is weak or there was simply no reason to call it. For now it's the only worker that might count as the "nobody calling it" the design doc worried about.

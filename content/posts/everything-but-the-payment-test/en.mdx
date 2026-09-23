@@ -15,7 +15,7 @@ Most of the OPIc speaking-practice app's revenue comes through those in-app paym
 
 Play Console wanted DEX code optimization. It was filed as a requirement, with a deadline attached.
 
-On August 31st I enabled `minifyEnabled`. On September 1st I enabled `shrinkResources`, adjusted the optimizer settings, and shipped a lightweight release — three builds in a row. Production review passed on September 2nd.
+On August 31st I enabled `minifyEnabled`. On September 1st I enabled `shrinkResources`, adjusted the optimizer settings, and shipped a lightweight release, one build after another. Production review passed on September 2nd.
 
 Every build succeeded. There were no warnings.
 
@@ -68,9 +68,9 @@ I took out my phone and pressed buy. It stopped at "Processing…". Leaving and 
 
 R8 leaves a record of what it deleted: `mapping/release/usage.txt`.
 
-First attempt. The payment callbacks were gone. The product-details response callback, a constants class in its entirety, several `BillingClient` builder methods. A Cordova plugin is found by string and called only through interface callbacks, so it never appears in R8's reference graph. I added keep rules. Still broken.
+At first I found the payment callbacks gone. The product-details response callback, a constants class in its entirety, several `BillingClient` builder methods. A Cordova plugin is found by string and called only through interface callbacks, so it never appears in R8's reference graph. I added keep rules. Still broken.
 
-Second attempt. Looking wider, it was not only the plugin. All of `org.apache.cordova` had been cut, and the bridge class that carries JS calls into native was gone entirely. I had protected the plugin and left the framework unprotected. With the framework kept too, removals dropped from 98 to 9. Still broken.
+Next I looked wider. It was not only the plugin. All of `org.apache.cordova` had been cut, and the bridge class that carries JS calls into native was gone entirely. I had protected the plugin and left the framework unprotected. With the framework kept too, removals dropped from 98 to 9. Still broken.
 
 At this point I deployed instrumentation on every failure point, and for the first time got values back.
 
@@ -81,7 +81,7 @@ At this point I deployed instrumentation on every failure point, and for the fir
 
 Three milliseconds. And logcat had not one line of `BillingClient` output, which means the native call was never even made.
 
-On the third attempt I opened the app itself. Web debugging enabled on the release build, attached over the DevTools protocol, and initialization run by hand down the same path the app takes.
+After that I opened the app itself. Web debugging enabled on the release build, attached over the DevTools protocol, and initialization run by hand down the same path the app takes.
 
 ```
 code: 6777001
@@ -121,7 +121,7 @@ Every class was there. The one thing missing was the plugin registry, `res/xml/c
       sub: 'JS→native',
       col: 1,
       row: 0,
-      note: 'The bridge that carries a JS call into native. R8 deleted it whole. Restored on the second attempt.',
+      note: 'The bridge that carries a JS call into native. R8 deleted it whole. Restored once the framework went into keep too.',
     },
     {
       id: 'manager',
@@ -171,7 +171,7 @@ Every class was there. The one thing missing was the plugin registry, `res/xml/c
 | Resource shrinking | Sep 1   | The plugin registry, `res/xml/config.xml`     |
 | Code shrinking     | Aug 31  | Payment callbacks, the Cordova bridge classes |
 
-Both produce the same symptom. It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I'd fixed it correctly twice while thinking both were wasted effort.
+Both produce the same symptom. It stops at "Processing…". So fixing one of them exactly changed nothing on screen, and I'd fixed each one correctly while thinking both were wasted effort.
 
 When the first fix was logically right and the symptom didn't move, I think I'd have done better to suspect a second cause before abandoning the hypothesis.
 

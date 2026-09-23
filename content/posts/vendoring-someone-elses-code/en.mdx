@@ -32,7 +32,7 @@ So I vendored it: pull the code into the repository wholesale, but keep it in a 
 
 Staying diffable against the original meant following a few rules without exception.
 
-No formatter touches it. Linters and import sorting all go in the exclude list, because formatting it even once makes it different code from the original and diffing stops working. If a commit hook objects, disable the hook and commit.
+No formatter touches it. Linters and import sorting all go in the exclude list, because the moment it is formatted it becomes different code from the original and diffing stops working. If a commit hook objects, disable the hook and commit.
 
 Every changed line carries a comment saying why. When comparing against upstream later, that comment is the only clue, and without it the next person just assumes the original was like that.
 
