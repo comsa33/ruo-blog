@@ -10,7 +10,7 @@ The report came in like this.
 
 > When I talk to the agent first thing in the morning it knows none of my preferences. From the second message on it's fine.
 
-No error logs. No 5xx. The response was a 200 with an empty array where the memories should have been. Calling it repeatedly during the day never reproduced anything.
+No error logs, no 5xx. The response was a 200 with an empty array where the memories should have been. Calling it repeatedly during the day never reproduced anything.
 
 Once I found the cause, I realised there were five more defects of exactly the same kind.
 
@@ -56,7 +56,7 @@ The vector store's connection pool had no check before handing a connection out.
   ]}
 />
 
-The design was right. You can't drop a conversation because memory lookup failed. The problem was that the swallowed failure was reported nowhere. An empty array and "a user with no memories" were indistinguishable.
+You can't drop a conversation because memory lookup failed, so swallowing the failure was the right design. The problem was that the swallowed failure was reported nowhere, which left an empty array and "a user with no memories" indistinguishable.
 
 The fix was two lines: a pre-borrow check on the pool, and a signal for the swallowed failure that is distinct from an empty result.
 
@@ -87,7 +87,7 @@ To exclude the current conversation from search results I added a `$not` conditi
   ]}
 />
 
-`NOT NULL` isn't `TRUE`, it is `NULL`. Obvious to anyone who remembers, and a few days for anyone who doesn't. The dangerous part is that the condition raises nothing. The query succeeds and the result set quietly shrinks.
+In SQL, `NOT NULL` evaluates to `NULL`. And the condition raises nothing, so the query succeeds and the result set just quietly shrinks.
 
 Wrapped it in `COALESCE(NOT (…), TRUE)`, and made the field non-optional in the first place by requiring a category on automatically ingested rows too.
 
@@ -103,13 +103,13 @@ The vendored code computed that reference in UTC.
   meeting tomorrow" at half past midnight, and the memory records a meeting today.
 </Callout>
 
-Someone suggested setting the pod timezone to `Asia/Seoul`. We did not. Having to verify that setting on every deploy is itself the failure mode. Miss it once, anywhere, and the same bug comes back silently.
+Someone suggested setting the pod timezone to `Asia/Seoul`. We didn't, because that setting would have to be verified on every deploy, and if it's missed once, anywhere, the same bug comes back silently.
 
-The reference date is pinned to UTC+9 in code instead. Korea has had no daylight saving since 1988, so the value is always correct. A constant that does not depend on the environment beats a setting that does.
+The reference date is pinned to UTC+9 in code instead. Korea has had no daylight saving since 1988, so the value is always correct.
 
 ## The other three
 
-Three more of the same character. All caught before deployment.
+There were three more of the same character, all caught before deployment.
 
 <Metrics>
   <Metric
@@ -132,22 +132,14 @@ The third is the nastiest. Paging through, some items appear twice and others ne
 
 Laid side by side, all six collapse into one thing.
 
-None of them throw. The dead connection became a swallowed failure, `NOT NULL` quietly shrank the result set, the UTC reference produced a plausible date, the full scan was merely slow, the string timestamp only got the order wrong, and `LIMIT` without a sort answered differently each time.
-
-All of them return 200. All of them return a plausible value.
-
-Bugs that raise are easy. A stack trace names the line, an alert fires, it reproduces. Bugs that quietly return the wrong value get found by users instead — in the shape of "it's only weird in the mornings".
+None of them throw. The dead connection became a swallowed failure, `NOT NULL` quietly shrank the result set, the UTC reference produced a plausible date, the full scan was merely slow, the string timestamp only got the order wrong, and `LIMIT` without a sort answered differently each time. And all of them returned a 200 with a plausible value.
 
 ## What catching them early was worth
 
-Four of the six were caught while still unreleased, by reading the code rather than by an incident.
+Four of the six were caught while still unreleased, by reading the code before any incident.
 
-After release each would have needed a data migration. String timestamps mean converting a ledger that already exists, and the UTC reference date has no way back at all. No way back is the point: a memory that stored "tomorrow" a day early isn't recovered by fixing the timezone later.
+After release each would have needed a data migration. String timestamps mean converting a ledger that already exists, and for the UTC reference date there's no way to restore relative dates already stored. A memory that stored "tomorrow" a day off isn't recovered by fixing the timezone later.
 
 ## What is left
 
-Express "none" and "couldn't fetch" as the same empty array and **an outage disguises itself as a normal response.** Four of the six had that shape. More logging doesn't reach it; the types have to be split, and that refactor hasn't happened.
-
-The other two are the same in character. Code that leaned on the pod timezone is pinned to a constant now, and that `NOT NULL` is `NULL` is known to everyone who knows SQL, which is exactly why nobody raised it in review. Knowing something and recalling it at the right moment seem to be different things.
-
-To find the next ones in this family I'd have to count the places that return an empty array. I haven't counted them.
+Four of the six used one empty array for both "none" and "couldn't fetch". There may be more of that shape in the code, but I haven't gone through every place that returns an empty array yet. Fixing it properly means splitting the two cases into different types, and that refactor hasn't happened either.

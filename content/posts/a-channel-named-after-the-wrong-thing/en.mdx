@@ -7,7 +7,7 @@ tags: ['streaming', 'Redis PubSub', 'diagnosis']
 draft: false
 ---
 
-Code written by a user runs inside an agent. That code can call another agent. When it does, the answer comes back token by token, and those tokens travel on to the browser.
+Code written by a user runs inside an agent, and that code can call another agent. When it does, the answer comes back token by token, and those tokens travel on to the browser.
 
 I ran a single line: `print("Hello World")`. The model produced five tokens — `print`, `("`, `Hello`, ` World`, `")`. The browser received 195 SSE events.
 
@@ -24,11 +24,11 @@ I ran a single line: `print("Hello World")`. The model produced five tokens — 
 
 ## The channel was named after the request ID
 
-When the chat service takes a request, it subscribes to one Redis channel. The channel is named `sse.response:{request ID}`. Whatever appears there is pushed to the browser. That is the SSE response.
+When the chat service takes a request, it subscribes to a Redis channel named `sse.response:{request ID}` and pushes whatever appears there to the browser. That is the SSE response.
 
-The sandbox publishes to the same channel directly. It has to, if progress messages like "generating code…" are to reach the browser. So far this is the design.
+The sandbox publishes to the same channel directly, so that progress messages like "generating code…" reach the browser. So far this is the design.
 
-The problem is that the sandbox passed its request ID down unchanged when it called another agent. Same request ID, same channel name. Same channel name, and the second chat service handling that agent subscribes to the very same channel.
+The problem is that the sandbox passed its request ID down unchanged when it called another agent. With the same request ID the channel name comes out the same, and the second chat service, the one handling that agent, ends up subscribing to the very same channel.
 
 <Sequence
   caption="The moment there are two subscribers"
@@ -75,8 +75,6 @@ The problem is that the sandbox passed its request ID down unchanged when it cal
   ]}
 />
 
-One writer, two readers — and one of the readers was the writer.
-
 ## The shape of the echo
 
 The order in the logs shows the mechanism directly. The first token inflates on its own, and from there the whole run of tokens so far circles as one block.
@@ -89,11 +87,11 @@ The order in the logs shows the mechanism directly. The first token inflates on 
 | 4     | ` World` + 3 earlier tokens                                   |
 | 5     | `")` + 4 earlier tokens, the 5-token block repeating 38 times |
 
-By its symptom this is a streaming bug, so the streaming code is where I looked first. Buffering, chunk boundaries, reassembly. None of it. **Duplication isn't a pipe problem but a subscriber-count problem.** One writer and two readers emit twice however well the pipe is written. While you are looking at the pipe, you can't see that.
+By its symptom this is a streaming bug, so the streaming code is where I looked first. I went through buffering, chunk boundaries and reassembly, and none of it was the cause. There were two services listening on the channel, so no amount of looking at the pipe was going to turn anything up.
 
-## The same bug wearing a second face
+## It came back on parallel calls
 
-Weeks later a different symptom arrived. Not a nested call this time but parallel ones: code calling two agents at once for the weather in Seoul and in Los Angeles.
+Weeks later a different symptom arrived. This time it was parallel calls: code in the sandbox calling two agents at once for the weather in Seoul and in Los Angeles.
 
 Los Angeles came back clean. Seoul came back like this.
 
@@ -102,15 +100,15 @@ Los Angeles came back clean. Seoul came back like this.
 Weather 🌤️ in Tomorrow Seoul#'s Weather 🌤 (️Web Search in Tomorrow Seoul#'s …
 ```
 
-Tokens weren't repeating — they were being spliced into each other's positions. While streaming, a citation goes out as a placeholder first, and once the source is resolved an event follows saying "replace this string with that one". Two parallel requests shared one channel, so those replacements landed in each other's text. They applied where a replacement had already happened, and partial matches accumulated.
+This time the tokens were ending up in each other's positions instead of repeating. While streaming, a citation goes out as a placeholder first, and once the source is resolved an event follows saying "replace this string with that one". Two parallel requests shared one channel, so those replacements landed in each other's text. They applied where a replacement had already happened, and partial matches accumulated.
 
-The symptoms look nothing alike; the cause is one line. The channel is named after the request ID, and the request ID wasn't unique per stream. Nested, it echoes. Parallel, it interleaves.
+The symptoms looked nothing alike, but the cause was the same. The channel was named after the request ID, and the request ID wasn't unique per stream.
 
 ## Two fixes, one shape
 
-The first thing shipped was a stopgap: move publishing out of the agent level and up to the orchestrator level. Remove the publisher on the inside and the loop can't close. The symptom stopped; the channel name didn't change.
+The first thing shipped was a stopgap. Pubsub publishing was moved out of the agent level and up to the orchestrator level, which took away the publisher on the inside, and without it the loop can't close. The symptom stopped, but the channel name stayed as it was.
 
-The real fix derives a new ID for the inner call.
+After that came the fix that derives a new ID for the inner call.
 
 ```python
 # A fresh ID for the inner call — the channels split
@@ -122,23 +120,21 @@ inner_headers = {
 }
 ```
 
-The point is that the first value in `x-request-traces` stays the original. The publish target is taken from that first value, so the channels split while the path out to the browser stays the single one it always was. The trace chain survives too.
+The first value in `x-request-traces` stays the original. The publish target is taken from that first value, so the channels split while the path out to the browser stays the single one it always was. The trace chain survives too.
 
 The parallel case ended the same shape. When the shared parallel client builds per-task headers, it derives the request ID as `{original}-{call name}-{8 random chars}`. Read the name and you can see which original it branched from and which call it is.
 
 <Callout label="The second line of defence that was there and did not work" accent>
 That subscription actually has one more condition on it. A request carries the name of the agent that started the call and the agent currently handling it, and it subscribes only when they match. In a nested call they should differ — and had they differed, the inner service would never have subscribed.
 
-But an empty header is filled in with its own name, looked up from the database. The inner call did not carry those headers, so the two values became equal. The guard disarmed itself. This bug needed both the channel name and this condition to fail at once, and both did.
+But an empty header is filled in with its own name, looked up from the database. The inner call did not carry those headers, so the two values became equal. This bug needed both the channel name and this condition to fail at once, and both did.
 
 </Callout>
 
 ## What is still broken
 
-The receiving side is still silent. What got fixed was the caller. The chat service still fills in its own name when the originating-agent header is absent. An empty value on a nested call is almost certainly a mistake, and it is neither rejected nor logged.
+What got fixed was the caller; the receiving side is as it was. The chat service still fills in its own name when the originating-agent header is absent. An empty value on a nested call is almost certainly a mistake, yet it's neither rejected nor warned about.
 
-Sandbox code has no contract. The file behind this incident is user code, one per agent, living outside version control. Checking it now: it forwards the agent-name headers but still passes the original request ID. The shared client handles all thirteen headers for you, and nothing blocks the path around it that hand-rolls an HTTP client. I don't think the gap is really knowledge; it's that the bypass stays open.
+The file behind this incident is user code, one per agent, so it has no contract and lives outside version control. Checking it now: it forwards the agent-name headers but still passes the original request ID. The shared client handles all thirteen headers for you, and nothing blocks the path around it that hand-rolls an HTTP client. I don't think the gap is really knowledge; it's that the bypass stays open.
 
-Nothing counts who published, and how often. Request ID, originating pod and timestamp, logged just before each publish, would have made "there are two subscribers" visible on day one. That logging does not exist. The post-mortem records it as needed.
-
-There is no regression test.\*\* One check — an agent calls an agent, count the events the browser receives — ends this class of bug. Once the incident closed it stopped feeling urgent, which is exactly why the same cause resurfaced in the parallel path.
+Logging request ID, originating pod and timestamp just before each publish would have made "there are two subscribers" visible on day one, but nothing counts who published, and how often. The post-mortem only records that it's needed. There's no regression test either. One check — an agent calls an agent, count the events the browser receives — would catch this class of bug. Once the nested-call incident closed, that check stopped being urgent, and weeks later the same cause came back on parallel calls.

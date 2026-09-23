@@ -109,7 +109,7 @@ Counting tokens killed it.
   hint="Hover a segment or a row for detail."
 />
 
-We were resending 98% to process 2%. When fixed cost dominates, there is one answer: batch, and share the fixed cost across turns.
+We were resending 98% of the input every time to process 2%, so I decided to batch turns and share the fixed cost across them.
 
 <Playground
   caption="Cost of processing 1,000 turns by batch size"
@@ -130,7 +130,7 @@ We were resending 98% to process 2%. When fixed cost dominates, there is one ans
   })}
 />
 
-Batches of five cut it by 4.6×. Push the slider further and it keeps improving, but the returns fall off a cliff. Sharing the fixed cost pays out early; after that you are only adding latency before a memory becomes available. Sessions were the natural unit anyway, and five turns sat closest to how the service was actually used.
+Batches of five cut it by 4.6×. Push the slider further and it does keep dropping, but almost all of the saving from sharing the fixed cost comes in the first few steps, and after that you're only adding delay before a memory gets stored. In the real service memory is needed at the session level anyway, and five turns or so sat closest to that.
 
 <Sequence
   caption="Ingest flow"
@@ -184,9 +184,9 @@ Batches of five cut it by 4.6×. Push the slider further and it keeps improving,
 
 ## No placement of the instruction worked
 
-If fixed cost is 80%, batching isn't the only lever. You can shrink the fixed cost itself. Reading that prompt is how I ran into the language bug.
+If fixed cost is 80%, batching isn't the only option; you can also shrink the fixed cost itself. That's why I opened the prompt, and that's how I ran into the language problem.
 
-The first attempt was to just say it: write in the same language as the input. Four conditions:
+At first I just told it to: write in the same language as the input. I tried four conditions.
 
 | Condition | Instruction placement                      | Result  |
 | --------- | ------------------------------------------ | ------- |
@@ -195,13 +195,13 @@ The first attempt was to just say it: write in the same language as the input. F
 | C         | Start of the system prompt, forcefully     | English |
 | E         | Minimal prompt with no examples + one line | Korean  |
 
-A, B and C all failed and only E passed. That was the answer. Placement was never the variable. What E removed wasn't a position but the examples.
+A, B and C came out in English wherever the instruction went, and the only one that came out in Korean was E, the one with every example removed.
 
 ## The cause was fourteen examples
 
-The prompt was 33,661 characters and contained fourteen English few-shot examples. In that entire prompt, the word `language` appeared zero times. Not one Korean character either.
+The prompt was 33,661 characters and contained fourteen English few-shot examples. The word `language` appeared zero times in all of it, and there wasn't a single Korean character. Nobody knew that until I read the prompt from the top to shrink it.
 
-The model hadn't ignored the instruction. It read it, and then fourteen consecutive demonstrations of "take Korean, write English" outvoted a single line of prose.
+My guess is that fourteen demonstrations of "take Korean, write English" simply weighed more than one line of instruction.
 
 <Callout label="A related discovery" accent>
   The previous version of the open-source memory engine we were using had `record the facts in the
@@ -211,7 +211,7 @@ The model hadn't ignored the instruction. It read it, and then fourteen consecut
 
 ## Same input, different prompt
 
-I cut the examples to three and made one of them a Korean input/output pair. The language rule is now carried by demonstration, not by a sentence.
+I cut the examples to three and made one of them a Korean input/output pair.
 
 <Transform
   caption="Only the prompt changes; the input is identical"
@@ -280,7 +280,7 @@ Two rounds on synthetic data, then a third on six real conversation threads. A/B
   <Metric value="97 → 69" label="Extractions. Read as less over-splitting" />
 </Metrics>
 
-The number that hurt was 50%. The English-extraction rate I believed until then was 13.4%, measured on synthetic data. Reality was nearly four times worse.
+The English-extraction rate I'd believed until then was 13.4%. That was measured on synthetic data; in real conversations half came out in English, so it was nearly four times worse.
 
 ## What came along with it
 
@@ -288,7 +288,7 @@ Rewriting the examples was also a chance to encode two contaminations that had b
 
 The first is recall re-ingestion. A user asks "what did I say I liked?", the agent lists stored memories back, and that listing gets extracted as new facts. Copies of the same fact multiply every time the topic comes up.
 
-The second is absence statements. "There is no record of that" was being stored as a memory that there is no record. A lookup result isn't a memory.
+The second is absence statements. "There is no record of that" was being stored as a memory that there is no record.
 
 | Contamination        | Before        | After         |
 | -------------------- | ------------- | ------------- |
@@ -310,7 +310,7 @@ How fast copies actually accumulate only shows up across sessions. Fifteen conse
   ]}
 />
 
-Without suppression, copies grow linearly. What matters is less that the final line is low and more that it flattens early: restating the same fact stops producing a new copy. Legitimate facts held at 22 of 24 throughout.
+Without suppression, copies grow linearly. The final version stops growing at 3 from the seventh session on, which means restating the same fact no longer produced a new copy. Through all of it, 22 of 24 legitimate facts were kept.
 
 ## What I couldn't fix
 
@@ -318,12 +318,4 @@ It also became clear what a prompt can't do.
 
 The agent suggests "navy is a safe choice", the user says nothing at all, and "the user prefers navy" gets stored. Instructions didn't stop it. Extra examples didn't. A dedicated non-response example didn't. Three attempts, three failures.
 
-Fabricating decisions that were never made is fully blocked by rules now. But whose opinion a stated thing belongs to isn't something a prompt adjudicates. That belongs in a filtering layer after ingestion.
-
-## What is left
-
-When a prompt contains both a rule and a demonstration that contradict each other, **the demonstration wins.** So trying to fix it by strengthening the instruction will keep failing. Find the contradicting demonstration instead.
-
-The 13.4% and 50% from the synthetic benchmark were only good for placing the order of magnitude. Carry that number over as evidence about production and it's wrong.
-
-And nobody knew that `language` appeared zero times in 33,661 characters. Shrinking the prompt was the act of reading it, and the bug was found while reading. Next time this prompt needs work I plan to count the examples before looking at a single rule.
+Fabricating decisions that were never made is fully blocked by rules now. But deciding whose opinion something that was said belongs to didn't work in the prompt, and I think it has to be handled in a filtering layer after ingestion.

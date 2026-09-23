@@ -1,6 +1,6 @@
 ---
 title: 'Six KST boundary bugs on a UTC server'
-description: "The server runs on UTC and the user's day starts in KST. Six bugs with nothing in common on the surface shared one root: two reference points mixed inside a single function."
+description: "The server runs on UTC and the user's day starts in KST. Six bugs with nothing in common on the surface shared one root, and the problem was two reference points mixed inside a single function."
 topic: 'OPIc app'
 date: 2026-09-08
 tags: ['payments', 'timezones', 'diagnosis']
@@ -9,9 +9,7 @@ draft: false
 
 Six bugs were fixed within one week. The symptoms had nothing in common.
 
-The weekly ranking didn't refresh on Monday morning. Review cards didn't appear on their due date. Credits refilled without limit. The admin dashboard and the admin list showed different numbers. An announcement was invisible on the day it was scheduled to start. A monthly referral cap didn't reset when the month did.
-
-They had one cause. And that cause wasn't "we used UTC".
+The weekly ranking didn't refresh on Monday morning, review cards didn't appear on their due date, and credits refilled without limit. The admin dashboard and the admin list showed different numbers, an announcement was invisible on the day it was scheduled to start, and a monthly referral cap didn't reset when the month did. As it turned out, they had one cause.
 
 ## The server lives in UTC
 
@@ -23,13 +21,11 @@ The problem appears when the code asks what "today" is.
 new Date().setHours(0, 0, 0, 0);
 ```
 
-That line means local midnight, and the server's local is UTC. For a Korean user this value is 09:00 KST.
+That line means local midnight, and since the server's local is UTC, for a Korean user this value is 09:00 KST. Nothing raises, nothing appears in the log, and on a developer's laptop it looks correct — because the laptop's local is KST.
 
-So the "start of day" this code computes isn't midnight but nine in the morning. Nothing raises, nothing appears in the log, and on a developer's laptop it looks correct — because the laptop's local is KST.
+## Two timezones in one comparison
 
-## The real defect is the mixing
-
-Laid side by side, the six sharpened into something more precise. **It wasn't that they used UTC — it was that the two sides of one comparison were in different timezones.**
+Laid side by side, the six had something more precise in common. The problem was less that they used UTC than that the two sides of one comparison were in different timezones.
 
 Start with the most expensive one: the daily credit refill.
 
@@ -40,9 +36,7 @@ lastRefill  = date key in UTC     // "2026-09-07"
 if (today !== lastRefill) refill()
 ```
 
-One side read KST, the other UTC. Between 00:00 and 09:00 KST those two values always differ. For those nine hours, a refill fired every time the balance dropped below the threshold.
-
-In one sentence: from midnight to nine in the morning, credits were infinite.
+One side read KST, the other UTC. Between 00:00 and 09:00 KST those two values always differ. For those nine hours, a refill fired every time the balance dropped below the threshold, so credits were effectively infinite.
 
 <Metrics>
   <Metric value="15" label="users who refilled past the legitimate daily cap" />
@@ -53,9 +47,9 @@ In one sentence: from midnight to nine in the morning, credits were infinite.
   />
 </Metrics>
 
-The last number is what confirms the cause. The people who got extra credits were the people who use the app at night. Only those active while the bug's window was open received the benefit. The amount is small, but this is a defect in the billing system, and it scales with the number of users.
+The last number is what confirms the cause. The people who got extra credits were the people who use the app at night, while the bug's window was open. The amount is small, but it's a billing defect, so it grows as the user base does.
 
-## One mismatch, six faces
+## The other five
 
 The other five share the root and resemble each other not at all.
 
@@ -67,34 +61,31 @@ The other five share the root and resemble each other not at all.
 | Admin date filter    | List totals disagreed with dashboard totals                                                   | The filter saw a UTC day, the dashboard a KST day                      |
 | Announcements        | Visible only from 09:00 on the start date                                                     | The admin's input was parsed as UTC by the server                      |
 
-The filter and the announcements are the cruel ones. Both had already been half fixed to KST. The dashboard looked at KST while the list filter looked at UTC, so two numbers on one screen disagreed. Fixing half is worse than fixing none.
+The admin filter and the announcements had already been half fixed to KST. The dashboard looked at KST while the list filter looked at UTC, so two numbers on one screen disagreed.
 
 ## How it was fixed
 
 The timezone helpers were collected into one file and the boundary functions were separated by name: week start, month start, midnight N days out, date key, admin input parsing.
 
-Storage stayed UTC. Only boundary computation changed. No schema change.
+Storage stayed UTC and only the boundary computation changed. There was no schema change.
 
 <Callout label="Why a fixed offset is enough" accent>
   Korea has had no daylight saving since 1988. KST boundaries can therefore be derived exactly with
-  UTC+9 arithmetic, with no timezone database and no library. A constant that does not depend on
-  configuration beats correctness that does.
+  UTC+9 arithmetic, with no timezone database and no library.
 </Callout>
 
 There was a one-time effect. Moving the week start nine hours earlier pulls Sunday-night activity into the current week. That favours users, so it stayed. Stored review dates were not backfilled; the next review overwrites them, and until then a card appears at most nine hours late.
 
 ## I made this mistake for the second time
 
-Writing this turned up something uncomfortable. I have made this mistake before.
+This wasn't the first time I'd made this mistake. In another project, in an entirely different codebase, the reference date for a user's utterance was being computed in UTC. The symptom then was also "between 00:00 and 09:00 Korean time". The conclusion then was to stop relying on the pod's timezone setting and pin the offset in code.
 
-In another project, in an entirely different codebase, the reference date for a user's utterance was being computed in UTC. The symptom then was also "between 00:00 and 09:00 Korean time". The conclusion then was to stop relying on the pod's timezone setting and pin the offset in code.
-
-That conclusion was right, and it did not travel to the next project. The lesson was stored in memory rather than in code or tooling. So when a new repository started, nothing stopped me.
+That conclusion was right, but it didn't travel to the next project. When a new repository started, nothing stopped me.
 
 ## What is still open
 
-I do not know yet whether a linter can catch this. A rule banning `setHours(0,0,0,0)` and `getDay()` in server code is writable. But on the client those are the correct calls, so it has to branch on file path, and once a rule grows complicated the exception comments multiply until it stops meaning anything. It does not exist yet.
+I still don't know whether a linter can catch this. A rule banning `setHours(0,0,0,0)` and `getDay()` in server code is writable. But on the client those are the correct calls, so it has to branch on file path, and once a rule grows complicated the exception comments multiply until it stops meaning anything. It doesn't exist yet.
 
-There are no tests around boundary code. I fixed six of these and wrote not one unit test. A handful of cases feeding 08:59 and 09:01 KST would have caught all six, and would catch the next break in the same places. Its absence is simply a thing I did not do.
+I fixed six of these and didn't write a single unit test, and there are still no tests around boundary code. A handful of cases feeding 08:59 and 09:01 KST would have caught all six, and would catch the next break in the same places. That they don't exist is simply something I didn't do.
 
-When the symptom does not resemble the cause, you fix it six times. A ranking that will not refresh and credits that refill forever look completely unrelated. So they arrived as separate bugs and were fixed separately. Generalising the sentence "the server's local midnight is 09:00 KST" while fixing the first one would have finished the other five in a day. Asking what class a bug is the first of is the step I keep forgetting.
+A ranking that won't refresh and credits that refill forever look completely unrelated, so they arrived as separate bugs and were fixed separately. If I'd generalised the sentence "the server's local midnight is 09:00 KST" while fixing the first one, the other five would have been done in a day.

@@ -9,13 +9,13 @@ draft: false
 
 Weekend signups dropped noticeably. I went in assuming something had broken, either in the product or in search traffic, and the answer was neither. The market itself was on its way down for the season, and while I was in there measuring cohorts, one of the premises of this business changed.
 
-The app I run is a mock-test app for OPIc, the English speaking exam. You get free credits on signup, and you buy credits for AI scoring. This post starts at "why did signups fall" and ends at "what does this app actually live on". I'm writing it in the order it happened.
+The app, a mock test for OPIc, the English speaking exam, makes its money on credits. You get free credits on signup, and you buy credits for AI scoring.
 
 ## The first query showed a total outage
 
 The first thing I did was pull daily signups from the database. The result was far worse than I expected. It wasn't a dip. From a certain date the signups looked almost cut off. I wondered whether the signup path had died, and for a moment I genuinely believed it was an outage.
 
-It wasn't. The query was wrong.
+What was wrong was the query.
 
 This app's ORM stores `DateTime` as UTC without a timezone. If you put `AT TIME ZONE 'Asia/Seoul'` on that column, Postgres treats the value as if it were already Seoul time and converts it back to UTC. That's the opposite direction from the correct one, so the two are 18 hours apart. The most recent eighteen hours of signups slide into the previous day, today's cell looks empty, and over a few days it reads as if signups had stopped.
 
@@ -27,7 +27,7 @@ created_at AT TIME ZONE 'Asia/Seoul'
 created_at + interval '9 hours'
 ```
 
-The embarrassing part is that I already knew this trap. I hit exactly the same thing writing a cost-aggregation query for the same app, and I wrote it down in my notes at the time. Turns out a note only works if you read it. Only after fixing the query did the real number come out.
+It wasn't the first time I'd hit this trap. I ran into exactly the same thing writing a cost-aggregation query for the same app, and I wrote it down in my notes at the time. Only after fixing the query did the real number come out.
 
 ## The real number was −27%
 
@@ -38,7 +38,7 @@ The embarrassing part is that I already knew this trap. I hit exactly the same t
 
 A 27% drop. Not an outage, but not a number to shrug at either. At this size you usually suspect one of two things. Either search rankings slipped, or some screen broke.
 
-So I opened Search Console. Daily clicks were 69 to 73 between September 8th and 10th, and 35 to 50 between the 13th and 17th. The same shape as signups. Rankings hadn't slipped, though. Position per page was unchanged, and it was impressions that had fallen.
+So I opened Search Console. Daily clicks were 69 to 73 between September 8th and 10th, and 35 to 50 between the 13th and 17th. The same shape as signups. Position per page was unchanged; what had fallen was impressions.
 
 Fewer impressions can mean fewer people searching. So as a third series I looked at Google Trends for `오픽`, the Korean name of the exam. September 6th to 10th sat at 100, and after that it had come down to around 45.
 
@@ -51,16 +51,16 @@ Fewer impressions can mean fewer people searching. So as a third series I looked
   <Metric value="100 → 45" label="Google Trends for the exam's name. Sept 6–10 was the peak" />
 </Metrics>
 
-When three series share a shape, it's the market. Looking at our own metric alone, it seems like something happened to us, but search volume itself was moving in that shape. There was nothing to fix in the app.
+Looking at our own metric alone, it seems like something happened to us, but search volume itself was moving in that shape. There was nothing to fix in the app.
 
-## Five years of it looked like a blade
+## Five years of search volume
 
-I stretched Trends out to five years. Search volume for the exam looks like two sharp blades. Every year it spikes in March–April and in early September, and each time it falls back to baseline within two to four weeks. The 2026 September peak was the 6th to the 10th, and the weekend where I felt "signups have dropped" was exactly the back side of that blade.
+I stretched Trends out to five years. Every year, search volume for the exam spikes sharply in March–April and in early September, then falls back to baseline within two to four weeks. The 2026 September peak was the 6th to the 10th, and the weekend where I felt "signups have dropped" was exactly the downslope right after it.
 
 I think the driver is hiring season. The exam is offered year-round, so the question "was last week an exam week" doesn't even make sense. My guess is that application deadlines are what send people to the search bar. That's only an interpretation, though, so I can't be sure.
 
 <Callout label="Right after a peak, everything looks like an incident" accent>
-  With blade-shaped demand, the week after the peak is always a plunge. If you look only at your own
+  With demand this spiky, the week after the peak is always a plunge. If you look only at your own
   numbers that week, it reads as a total outage. The order I learned this time is to lay Trends down
   first and put our own numbers on top of it. Do it the other way round and you go looking for a
   cause that isn't there, and you shake the product to find it.
@@ -84,7 +84,7 @@ So I measured the cohorts. For each signup week, how many people used AI scoring
 
 The signup line climbs toward the peak while the active line stays glued to the floor. As percentages: 11%, 7%, 10%, 2%, 0%. The peak-week cohort of September 7th brought in 124 people and 3 of them used it the following week. Of the 202 people in the peak cohort from September 1st to 12th, 6 were active in the last seven days. Three percent.
 
-That number is where I dropped the direction. Before even thinking about how to carry 3% six months forward, there was nobody to hold. Once you've sat the exam, the purpose is gone, and that's why people leave. This isn't a defect to fix but a property of the category, and with MAU or retention as the KPI I would have kept chasing the wrong thing.
+That number is where I dropped the direction. Before even thinking about how to carry 3% six months forward, there was nobody to hold. Once you've sat the exam, the purpose is gone, and that's why people leave. Had MAU or retention been the KPI, I'd have kept chasing the wrong thing.
 
 It was never a retention business. So what was it?
 
@@ -118,7 +118,7 @@ In the week of September 14th, when signups fell 27%, revenue was actually the h
 
 So the formula shrinks to one line. Revenue is new signups during the peak, multiplied by conversion to payment within three days. Active users outside the peak don't appear in it.
 
-## Four phases, four jobs
+## What to do in each phase
 
 Once it was laid out this way, the year's work split by season.
 
@@ -129,13 +129,13 @@ Once it was laid out this way, the year's work split by season.
 | Fall (2–4 weeks after peak)  | Post-mortems, stability work                                           | Shaking the product to find a cause |
 | Base (off-season)            | Build SEO and store assets. They take 4–8 weeks to work, so build here | Retention improvement projects      |
 
-The most expensive item on this table is the payment check during the rise. Right before this September's peak, Android in-app payments were silently dead for ten days, and [I wrote about that separately](/en/everything-but-the-payment-test). At the time it ended as "I didn't verify". Seen from here, those ten days sat on the threshold of one of only two revenue windows in the year. The same incident costs a different amount depending on when it happens, and in this business, right before a peak is when it costs the most.
+The most expensive item on this table is the payment check during the rise. Right before this September's peak, Android in-app payments were silently dead for ten days, and [I wrote about that separately](/en/everything-but-the-payment-test). At the time it ended as "I didn't verify". Seen from here, those ten days came right before one of only two revenue windows in the year.
 
-The off-season work changes too. A search asset takes four to eight weeks after you build it before it does anything. Build it during the peak and it's late. Build it during the fall and you get impatient. What gets built in October through December bears fruit in March, so I'm treating the next three months as what decides the next peak.
+The off-season work changes too. A search asset takes four to eight weeks after you build it before it does anything. Build it during the peak and it's late. Build it during the fall and you get impatient. Something built in October through December should start working in time for the March peak, so I'm treating the next three months as what decides the next peak.
 
 ## Not yet tested
 
-That's the set of principles I wrote down on September 20th. To be honest, none of it has been tested even once. The next peak is March–April, so the result won't be in for half a year. If it turns out then that assets built in the off-season raised peak signups, this post was right. If not, it's a post that used seasonality as an excuse to let six months slide.
+That's the set of principles I wrote down on September 20th. None of it has been tested even once yet. The next peak is March–April, so the result won't be in for half a year. If it turns out then that assets built in the off-season raised peak signups, this post was right. If not, it's a post that used seasonality as an excuse to let six months slide.
 
 The seasonal curve is still someone else's, too. Right now Google Trends is the reference, and I have never yet confirmed the twice-a-year spike from our own signup curve. I've decided to log the three series together once a month, and I think that after the second peak passes we'll be able to read the phase without Trends.
 

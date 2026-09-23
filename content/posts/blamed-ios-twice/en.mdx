@@ -1,17 +1,15 @@
 ---
 title: 'A file that starts with moof'
-description: 'Re-entering the start function across its await threw away the initialisation segment. I blamed iOS twice and was wrong twice; printing the first bytes of the upload settled it.'
+description: 'Re-entering the start function across its await threw away the initialisation segment. I blamed iOS, fixed for it and was wrong; printing the first bytes of the upload settled it.'
 topic: 'OPIc app'
 date: 2026-09-09
 tags: ['capture', 'MediaRecorder', 'diagnosis']
 draft: false
 ---
 
-The speaking-practice app I run records a user's answer, sends it to a model and returns an assessment. If recording doesn't work, there is no product.
+On 8 September a new user of my OPIc speaking-practice app failed analysis five times in a row, starting three minutes after signing up. The app records a user's answer, sends it to a model and returns an assessment, and the server log held one fact about those failures: the model API had returned `400 INVALID_ARGUMENT`.
 
-On 8 September a new user failed analysis five times in a row, starting three minutes after signing up. The server log held one fact and nothing else: the model API had returned `400 INVALID_ARGUMENT`.
-
-## The first misdiagnosis
+## Suspecting iOS
 
 There were two failures in the log and both were iOS. 18.7 and 18.7.1.
 
@@ -21,11 +19,11 @@ So I detected iOS 18 and switched it to record mp4. Safari on iPad pretends to b
 
 I deployed. The same user failed again with the same symptom.
 
-Getting that alert a second time was deflating. Changing the container and getting the same result means the container wasn't the cause. That's when I noticed something odd: the evidence had never once pointed at that hypothesis. I'd picked a cause from a single shared trait, iOS, and left it there.
+Changing the container and getting the same result means the container wasn't the cause. That's when I noticed something odd: the evidence had never once pointed at that hypothesis. I'd picked a cause from a single shared trait, iOS, and left it there.
 
 ## I stopped guessing and added instrumentation
 
-It took being wrong twice to admit the order was backwards. Nobody had ever looked at what a failing request actually uploaded.
+It took being wrong once to admit the order was backwards. Nobody had ever looked at what a failing request actually uploaded.
 
 I added diagnostics that record the leading bytes of the uploaded file, its container header and its effective bitrate whenever a failure occurs.
 
@@ -36,15 +34,13 @@ The next morning the answer arrived. All five failures on 9 September uploaded f
              m o o f
 ```
 
-I made a noise out loud when I saw it.
-
 `moof` is the fragment box of a fragmented MP4. It belongs in the middle of a file, not at the start. The `ftyp` and `moov` boxes that should precede it were absent. The initialisation segment, which carries codec and track configuration, was missing entirely.
 
 I didn't work this out myself either. I pasted the bytes into Claude Code and it told me they were the fragment box of a fragmented MP4. That was the first time I'd heard the name `moof`, and a bit of reading afterwards seemed to agree. Media containers aren't my field. I was willing to suspect the kind of container and never once suspected whether the container was well formed, because I didn't know what was supposed to be inside one in the first place.
 
 No decoder can read a file like that. The model server returning 400 was correct.
 
-## The real cause
+## Two calls into the start function
 
 `MediaRecorder` emits the initialisation segment exactly once, as the first chunk when it starts. Its absence means **the first chunk was thrown away**.
 
@@ -129,11 +125,11 @@ Recounted properly:
   <Metric value="2" label="actual people behind those 11. The same person retried several times" />
   <Metric
     value="iOS 18.7"
-    label="every one of the 11 was an iPhone on 18.7. This is why the first misdiagnosis felt so plausible"
+    label="every one of the 11 was an iPhone on 18.7. This is why the iOS hypothesis looked so plausible"
   />
 </Metrics>
 
-My own test traffic had leaked into a production failure metric. Read in a hurry it shows 3.1%; what actually happened to users was 0.45%. If you can't subtract your own noise from your own metrics, you'll end up ranking the wrong thing first.
+My own test traffic had leaked into a production failure metric. Read in a hurry it shows 3.1%; what actually happened to users was 0.45%.
 
 ## What I'll look at tomorrow
 
@@ -141,8 +137,8 @@ I can't say it's fixed yet. The deploy went out at 12:30 today and in the three 
 
 I still don't know whether iOS 18 is innocent either. It's a fact that all 11 real failures were iPhones on 18.7. The defect itself is a platform-independent race, but it's plausible that slower microphone-permission handling widens the `await` window and therefore the race. That's a guess, though, and I didn't measure it. Timing `getUserMedia` per device would settle it. I haven't.
 
-And no user ever reported any of this. Every incident found in this app so far surfaced through logs and alerts; not one arrived as a user report. Someone who fails five times within three minutes of signing up doesn't file a report. They delete the app. **An absence of reports may not mean an absence of problems, but an absence of people left to report them.**
+And no user ever reported any of this. Every incident found in this app so far surfaced through logs and alerts; not one arrived as a user report. The user who failed five times within three minutes of signing up didn't send one either.
 
-Instrumentation first would have saved two days. Both misdiagnoses came from a plausible shared trait, and iOS really was shared, and it really wasn't the cause. Printing the first sixteen bytes of the uploaded file took one line.
+If the one line that prints the first sixteen bytes of the upload had been there from the start, I don't think it would have taken two days.
 
 That's as far as I'm taking it tonight. I'll look at the numbers again in the morning.

@@ -8,9 +8,9 @@ tags: ['dependencies', 'open source', 'decision']
 
 The storage and retrieval engine behind the memory service wasn't written here. It came from an open-source library. But as described in [the first post](/en/examples-beat-instructions), that library's extraction prompt had to be changed — Korean conversations were being extracted into English.
 
-That is where the choice appears.
+That's where the choice came in.
 
-## Three roads
+## Dependency, fork, or vendor
 
 | Option              | Our changes | Upstream updates     | Diffability   |
 | ------------------- | ----------- | -------------------- | ------------- |
@@ -20,7 +20,7 @@ That is where the choice appears.
 
 As a dependency the prompt can't be touched. As a fork it can, but within months nobody can tell whether a given line was always like that or something we did.
 
-I took the third. Pull the code into the repository wholesale, but keep it in a state where a diff against the original is always possible.
+So I vendored it: pull the code into the repository wholesale, but keep it in a state where a diff against the original is always possible.
 
 <Metrics>
   <Metric value="13,000 lines" label="code brought in" />
@@ -28,15 +28,15 @@ I took the third. Pull the code into the repository wholesale, but keep it in a 
   <Metric value="18" label="points we modified" />
 </Metrics>
 
-## The price is discipline
+## The rules we kept
 
-Vendoring isn't copying. Copying is easy; keeping it isn't. What makes it keepable is following a few rules without exception.
+Staying diffable against the original meant following a few rules without exception.
 
-No formatter touches it. Linters, import sorting — all of it goes in the exclude list. Format it once and it is no longer the original, and diffing becomes impossible from that moment. If a commit hook objects, disable the hook and commit. It looks like laziness; it's the rule.
+No formatter touches it. Linters and import sorting all go in the exclude list, because formatting it even once makes it different code from the original and diffing stops working. If a commit hook objects, disable the hook and commit.
 
-Every changed line carries a comment saying why. When comparing against upstream later, that comment is the only clue. An uncommented change reads to the next person as "I guess the original was like that."
+Every changed line carries a comment saying why. When comparing against upstream later, that comment is the only clue, and without it the next person just assumes the original was like that.
 
-The import is split into three commits. This is the crux.
+The import is split into three commits.
 
 <Sequence
   caption="Bringing vendored code in"
@@ -69,17 +69,17 @@ The import is split into three commits. This is the crux.
   ]}
 />
 
-Follow this and you can always diff commit 1 against today to see everything you changed. Mix it and that ability is gone.
+Follow this and you can always diff commit 1 against today to see everything we changed.
 
 ## What you learn from having to read it
 
-You end up with no choice but to read someone else's code. Things invisible from the outside start showing up.
+You end up with no choice but to read someone else's code, and things that were invisible from the outside started showing up.
 
 ### A class that is async in name only
 
-The library ships both a synchronous and an asynchronous class. Obviously you use the async one.
+The library ships both a synchronous and an asynchronous class. I took it for granted that we should be using the async one.
 
-Then you open it.
+Then I opened it.
 
 <Transform
   caption="Where the async class actually awaits"
@@ -111,11 +111,11 @@ Then you open it.
   ]}
 />
 
-Which is the same thing we already do by handing sync code to a thread pool. The only difference is whether you hand over a whole request or one call at a time.
+It was doing the same thing we already do by handing sync code to a thread pool. The only difference is whether you hand over a whole request or one call at a time.
 
-Switching would gain essentially nothing and cost something specific: maintaining our changes twice. Eighteen modifications live on the sync path; all of them would have to be duplicated and kept in step.
+Switching would gain essentially nothing, and we'd have to maintain our changes twice. All eighteen modifications live on the sync path, so they'd have to be duplicated and kept in step.
 
-And the real bottleneck was elsewhere.
+The bottleneck was somewhere else.
 
 <Compare
   caption="Concurrent request throughput"
@@ -130,8 +130,6 @@ And the real bottleneck was elsewhere.
 
 ### A feature with no switch
 
-This one still makes me slightly uneasy.
-
 Version 2 of the library contains an undocumented entity linking feature. It extracts entities from memory sentences, embeds them into a separate table, and boosts memories sharing an entity at search time. A reasonable feature.
 
 <Callout label="There is no switch" accent>
@@ -141,32 +139,24 @@ The moment somebody adds it as a dependency for a completely unrelated reason, a
 
 </Callout>
 
-It is also close to useless for Korean. The model is hardcoded for English, and the check for whether a token is a name is whether its first character is uppercase. Korean has no uppercase, so nothing ever qualifies. Turned on, it costs and does nothing.
+It's also close to useless for Korean. The model is hardcoded for English and a token counts as a name if its first character is uppercase, so Korean, which has no uppercase, never qualifies. Turned on, it costs and does nothing.
 
-It could be fixed — swap the model, rewrite the capitalisation test and the English stopword filter. But that collides head-on with "keep our diff minimal". So it was not fixed; it was written down. The best available move is to tell the next person where the mine is.
+It could have been fixed by swapping the model and rewriting the capitalisation test and the English stopword filter, but that collides head-on with "keep our diff minimal". So I didn't fix it, and wrote down instead what turns it on and what happens when it does.
 
 ### Config keys that are silently ignored
 
-Pass a wrong key name to the config object and nothing is raised. It is ignored.
+Pass a wrong key name to the config object and it's simply ignored, with no error.
 
-- The database connection string is not `dsn` but another name. Get it wrong and it does not fail to connect — it falls back to a default, quietly
-- Point the history store at the wrong path and it drops to a local file database instead of PostgreSQL. No log
-- The graph config from v1 no longer exists in v2, but passing it raises nothing. It is ignored
+- Pass the database connection string under the key `dsn` and the key is ignored as wrong; there's no connection error, it quietly falls back to a default
+- Point the history store at the wrong path and it drops to a local file database instead of PostgreSQL, with no log
+- The graph config from v1 no longer exists in v2, but passing it is ignored without an error
 
-All of it the same character described in [the previous post](/en/failures-that-dont-throw). Nothing throws.
+All of these are the same kind of failure as in [the previous post](/en/failures-that-dont-throw): nothing throws.
 
 ## Debt taken on deliberately
 
 The delete path is not atomic. Removing the vector row, writing the history entry and cleaning up run in sequence on separate connections with no transaction. If the first commits and the rest fail, you get a memory that is gone with no record of its deletion.
 
-The vendored code was not restructured to be atomic. That would explode the diff, which undermines the premise of the whole strategy. Instead there is a compensating layer outside it — backfilling missing history, sweeping rows left orphaned.
+Restructuring the vendored code to be atomic would blow up the diff, so we didn't, and put a compensating layer outside it instead. It backfills missing history and sweeps up rows left orphaned.
 
-It is not clean. But it is deliberate debt: replace the engine and the compensating layer disappears with it. Carrying it until then beats tearing up the vendored code and losing the ability to diff.
-
-## What is left
-
-**Vendoring is not copying code, it is the discipline of staying diffable.** Keeping formatters off and splitting the commits looks fastidious, but it is the minimum condition for the strategy to work at all. Break it once and what you have is a fork.
-
-Being forced to read someone else's code teaches you things. That the async class is async in name only, that config keys are silently ignored, that a feature hides behind an implicit switch — all of it came from reading. As a dependency all three would have stayed unknown until they became incidents.
-
-What you cannot fix, document. Entity linking is useless for Korean and we cannot fix it. What we could do is write down the condition that activates it and what happens when it does. If you cannot clear the mine, at least mark it.
+If the engine is replaced, the compensating layer goes with it. Until then, I judged that carrying this debt was better than tearing up the vendored code and losing the ability to diff against the original.

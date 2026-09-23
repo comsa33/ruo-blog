@@ -9,7 +9,7 @@ draft: false
 
 The title of this post is something I said while we were polishing the banner text on the survey screen. People don't read those things, they just tap next out of habit. After saying it, instead of polishing the text further, I moved the button, and while I was at it I brought in a set of rules from outside for how screens get built.
 
-Some background first. The OPIc mock-test app I run takes a background survey before the exam, just like the real test does. You pick your job, where you live, your leisure activities, your sports, and the questions are drawn from those choices. In mid-September I rebuilt this survey to match the real exam's structure, and one thing the real exam does is require at least 12 selections in total, where our app had only ever enforced an upper bound. So there were now users whose saved survey fell short of 12, and when I counted them there were 116. For those people, picking again is the better option.
+Some background first. The real OPIc exam starts with a background survey. You pick your job, where you live, your leisure activities, your sports, and the questions are drawn from those choices, and our app asks for the same survey before its mock test. In mid-September I rebuilt this survey to match the real exam's structure, and one thing the real exam does is require at least 12 selections in total, where our app had only ever enforced an upper bound. So there were now users whose saved survey fell short of 12, and when I counted them there were 116. For those people, picking again is the better option.
 
 ## I tried to steer them with text
 
@@ -129,13 +129,13 @@ Looking at one of those drafts is when the line above came out of my mouth. You 
   ]}
 />
 
-Polishing the text was a fight that couldn't be won from the start. However good the notice gets, the spot that habit aims for stays where it is. So I changed the spot instead of the words. When the saved survey has fewer than 12 selections, select anew becomes the primary button and continue drops to secondary. The only thing added to select anew is "recommended" in brackets. The words aren't doing the work any more. Tap out of habit and the recommended action is what runs.
+Polishing the text was a fight that couldn't be won from the start. However good the notice gets, the spot that habit aims for stays where it is. So I changed the spot instead of the words. When the saved survey has fewer than 12 selections, select anew becomes the primary button and continue drops to secondary. The only thing added to select anew is "recommended" in brackets. Tap out of habit and the recommended action is what runs.
 
 ## Bringing in the rules
 
-None of this is a new idea. Rauno Freiberg's Invisible Details of Interaction Design and Devouring Details say the same thing: habit is something you design for, and the recommended action belongs in the default position. This blog's own design rules were measured off those same two sites, so I wasn't unfamiliar with them. I just hadn't been applying them to the app.
+Rauno Freiberg's Invisible Details of Interaction Design and Devouring Details already say the same thing: habit is something you design for, and the recommended action belongs in the default position. This blog's own design rules were measured off those same two sites, so I wasn't unfamiliar with them. I just hadn't been applying them to the app.
 
-So right after that I decided to make those two pieces the rules for this app. Not just a summary of the originals, but a document that says where in our screens each rule lands, wired into the project instructions as a checklist for anyone touching the UI. There are ten rules and I'm not going to list them all here. What matters for this post is what became visible when I looked at our screens through them.
+So right after that I decided to make those two pieces the rules for this app. Not just a summary of the originals, but a document that says where in our screens each of the ten rules lands, wired into the project instructions as a checklist for anyone touching the UI.
 
 ## Frequency was the criterion
 
@@ -143,9 +143,9 @@ The first thing that snagged was animation. The rule goes like this: on frequent
 
 The most frequent interaction in our app is moving to the next question during an exam. Twelve to fifteen times per exam. And every question was playing a 640ms slide-up.
 
-At 640ms and 15 questions, an exam spends 9.6 seconds watching a transition. That transition was probably fine on the first question, and I suspect that's how it got in, but by the fifteenth it's waiting. The home dashboard, on the other hand, gets opened a few times a day, so choreography is allowed there. There aren't good transitions and bad ones. Frequency drew the line.
+At 640ms and 15 questions, an exam spends 9.6 seconds watching a transition. That transition was probably fine on the first question, and I suspect that's how it got in, but by the fifteenth it's waiting. The home dashboard, on the other hand, gets opened a few times a day, so choreography is allowed there.
 
-Beyond frequency, a full sweep of the code the same day produced numbers. 87 animations set to `infinite`, where the house standard is 0. CSS animations that respect prefers-reduced-motion: 2 out of 84. The worst spot was the exam question screen. Six background blob loops running even while the screen sat still. The user is speaking, and behind them blobs are reshaping on 8, 10 and 12 second cycles, composited once more through a blur. Battery being spent where nobody is looking.
+Beyond frequency, a full sweep of the code the same day produced numbers. 87 animations set to `infinite`, where the house standard is 0. CSS animations that respect prefers-reduced-motion: 2 out of 84. The worst spot was the exam question screen. Six background blob loops running even while the screen sat still. The user is speaking, and behind them blobs are reshaping on 8, 10 and 12 second cycles, composited once more through a blur.
 
 ## A failure I'd already had got a name
 
@@ -161,7 +161,7 @@ There was one more of the same kind on the credit side. When credits hit zero, t
 
 ## The audit didn't go as planned
 
-The task I wrote down the day I adopted the rules was a full audit against them, fixing everything. To be honest, that audit in that form didn't happen.
+The task I wrote down the day I adopted the rules was a full audit against them, fixing everything. That audit, in that form, didn't happen.
 
 Instead, a full redesign of the app started the same day, and the rules were absorbed into it. The question screen became a conversation thread with the examiner, so moving to the next question became one more speech bubble being added. With that structure, no transition is needed and nothing feels off. The first rule got kept by changing the structure rather than by deleting the animation, and I think that's the better way. Every confirmation dialog moved to a bottom sheet, with the recommended action as the wide primary button at the bottom. The layout I'd learned on the survey screen became the default across the app. When I measured the redesign branch again with grep, infinite loops of the shimmer and spin kind, gradients and hover states without a media query were all at 0.
 

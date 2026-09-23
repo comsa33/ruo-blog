@@ -7,13 +7,13 @@ tags: ['growth', 'control group', 'decision']
 draft: false
 ---
 
-The app I run gives free credits on signup. Credits buy an AI analysis, and every analysis costs real money. When users surged, the expected question followed.
-
 Is someone creating multiple accounts just to harvest the free credits?
+
+That question arrived as soon as users surged. Every signup gets free credits, and every AI analysis those credits buy costs real money, so it was a question I'd been expecting.
 
 There was reason to suspect it. Clusters of similarly named accounts were visible, and Google accounts can be created without limit. Candidate countermeasures came quickly too: device attestation, store integrity checks, IP limits, identity verification.
 
-None of them were applied. Instead one existing defence was deleted. This post is how that decision was reached.
+I applied none of them. Instead I deleted one defence that was already there.
 
 ## Measure the size first
 
@@ -34,7 +34,7 @@ The numbers ended the discussion. Adding identity verification costs far more th
 
 ## There was a control group
 
-Still, one question remains: what if today's four become four hundred? That is about trend, not size.
+Still, one question remains: what if today's four become four hundred? Today's numbers can't answer that. It takes the trend.
 
 Here I got lucky. This app had a natural control group.
 
@@ -50,7 +50,7 @@ Three measures, compared.
 
 None of them separated. The gap in the first row is z=1.24, not significant, and it points the wrong way: farming would push Google higher, and Kakao is higher.
 
-Mean usage per account does differ in the raw numbers — Kakao 14.6, Google 10.7, Apple 16.1. The distribution test found nothing. This is the textbook case for not arguing from a difference in means.
+Mean usage per account does differ in the raw numbers — Kakao 14.6, Google 10.7, Apple 16.1. The distribution test found nothing significant.
 
 The conclusion settled as: farming exists but hasn't grown to a measurable size, and if it starts growing the control group will show it first.
 
@@ -78,13 +78,11 @@ That condition inverts the arithmetic of farming.
 
 Each sub-account grants fifteen free credits, but qualifying for the reward means spending ten analyses from it. The more accounts you add, the faster consumption outruns acquisition. In the observed data a three-account farmer burned 45 analyses to obtain 30 credits.
 
-There is no reason to close a hole with technology when economics has already closed it.
-
 ## And I removed a defence
 
 During the investigation I found that a defence already switched on was causing the problem instead.
 
-To block self-referral, device fingerprints were being compared. That fingerprint was a hash of six values: user agent, language, core count, screen size and timezone. With no canvas or WebGL, its entropy is low.
+To block self-referral, device fingerprints were being compared. That fingerprint was a hash of basic device details like user agent, language, core count, screen size and timezone. With no canvas or WebGL, its entropy is low.
 
 Two unrelated people on the same phone model and OS produce the same hash.
 
@@ -98,30 +96,24 @@ Inviting a friend who uses the same phone — in a dormitory, at school, entirel
   after={100}
   beforeText="already blocked by the qualifying condition"
   afterText="same-model friend invites withheld"
-  note="The cost of a miss was near zero and the cost of a false positive landed directly on users. There is no reason to keep a check like that."
+  note="The cost of a miss was near zero and the cost of a false positive landed directly on users."
 />
 
 The false-positive cost exceeded the false-negative cost. Self-referral was already blocked economically by the qualifying condition, so the check added almost nothing. Its false positives, meanwhile, were taking real rewards away from real users.
 
 The check was removed. The remaining defences are the qualifying condition, an IP signal and a monthly cap. Fingerprint collection stayed, for measurement only.
 
-## The most expensive false positive
+## The account with 253 analyses
 
-The most uncomfortable finding wasn't a number but a single case.
+One account surfaced in the name-cluster report as a suspected abuser. Its usage was an overwhelming 253 analyses, and it looked like textbook multi-account farming. It was my single best paying customer.
 
-One account surfaced in the name-cluster report as a suspected abuser. Its usage was an overwhelming 253 analyses. It looked like textbook multi-account farming.
-
-It was the single best paying customer.
-
-The heaviest legitimate user and the heaviest abuser look identical in the logs. Usage alone will never separate them. Had an automatic blocking rule been in place, I would have cut off my best customer.
+Had an automatic blocking rule been in place, I'd have cut off my best customer.
 
 ## When to look again
 
-A decision to "not do this now" becomes plain neglect unless you also decide what would reverse it.
-
 One threshold is written down. If AI cost attributable to free users passes $100 a month, it gets revisited. It currently runs around $8.
 
-That $100 line is poorly justified, though. It is a number picked as a tolerable ceiling on loss, not one derived from any analysis. I can't explain it beyond "about ten times current cost". I wrote elsewhere that thresholds should be measured rather than chosen, and here I chose one.
+That $100 line is poorly justified, though. It's a number picked as a tolerable ceiling on loss, with no analysis behind it. I can't explain it beyond "about ten times current cost". I wrote elsewhere that thresholds should be measured rather than chosen, and here I chose one.
 
 ## What is still open
 

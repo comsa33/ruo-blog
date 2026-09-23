@@ -1,19 +1,17 @@
 ---
 title: 'Five fixes to SSE frame parsing in one day'
-description: 'The same ten lines were rewritten five times in 24 hours. The version that lost nothing was the first one, deleted after 17 minutes — the code lived inside a generated template string.'
+description: 'The same ten lines were rewritten five times in 24 hours. The raw-passthrough version, the only one that lost nothing, was gone in under two hours — and the code kept changing because it lived inside a generated template string.'
 topic: 'Dynamic execution engine'
 date: 2025-12-12
 tags: ['streaming', 'SSE', 'diagnosis']
 draft: false
 ---
 
-There is one promise we made when integrating external model providers: whichever provider is used, the shape of the response a client receives has to be the same.
+When we hooked up external model providers, we made one promise: whichever provider is used, the response a client receives has the same shape.
 
-Provider SSE payloads differ from each other. Field names differ, nesting depth differs, termination signals differ. Keeping the promise means opening each event as the stream passes and rewriting it into our shape.
+Provider SSE payloads differ in field names, nesting depth and termination signals. Keeping the promise means opening each event as the stream passes and rewriting it into our shape, and at that point this layer goes from a relay that hands things on to a parser that takes every event apart.
 
-The moment it does that, this layer stops being a relay and becomes a parser. This post is about what that costs.
-
-## Ten lines, twenty-four hours, five versions
+## Between 4 and 5 August
 
 Between 10:17 on 4 August 2025 and 10:01 the following morning, the code in one place changed five times.
 
@@ -26,7 +24,7 @@ Between 10:17 on 4 August 2025 and 10:01 the following morning, the code in one 
 
 Two mechanisms were added and then taken back out. The buffer lasted seventeen minutes; the regex lasted until the next morning.
 
-Every commit message says "improved". None says what broke or how. So I lifted each of the four versions out and fed them the same stream.
+Every commit message just says "improved", so none of them says what broke or how. Given the same stream, the four versions do this.
 
 <Transform
   caption="One SSE stream, four implementations"
@@ -50,7 +48,8 @@ Every commit message says "improved". None says what broke or how. So I lifted e
       key: 'v3',
       label: '15:37 · raw passthrough',
       output: [{ attr: 'as received', text: 'identical to the input' }],
-      verdict: 'It loses nothing. It also changes nothing. Deleted seventeen minutes later.',
+      verdict:
+        'It loses nothing. It also changes nothing. Deleted at 17:21, when the buffer came back.',
     },
     {
       key: 'v4',
@@ -78,25 +77,23 @@ Every commit message says "improved". None says what broke or how. So I lifted e
   ]}
 />
 
-Of the four, exactly one loses nothing: raw passthrough. And it was deleted after seventeen minutes.
+Of the four, the only one that loses nothing is raw passthrough, and it was gone in under two hours.
 
 ## Why we didn't go back to passthrough
 
-That was the question I most wanted answered. A lossless implementation was right there. Why return to parsing?
+Why go back to parsing when a lossless version existed? The final implementation shows why. It pulls each event apart, remaps it into the gateway's common shape, filters out the termination sentinel, and blanks a field for certain event types.
 
-The answer is in today's code. The final implementation pulls each event apart, remaps it into the gateway's common shape, filters out the termination sentinel, and blanks a field for certain event types.
+Raw passthrough forwards the stream untouched, so it can't do any of that. And making differently-shaped providers look the same is the reason this layer exists.
 
-So raw passthrough loses nothing precisely because it changes nothing. But the reason this system exists was to make differently-shaped providers look the same. I don't think forwarding untouched and normalising the shape can hold at the same time.
-
-<Callout label="What the seventeen-minute version showed" accent>
-  That version was less a wrong choice than a different product, I think. Keeping it would have made
-  us a transparent proxy and pushed the job of absorbing provider differences onto every client. The
-  code could always be undone. The promise is the part that couldn't.
+<Callout label="If passthrough had stayed" accent>
+  This layer would have become a transparent proxy, and every client would have had to absorb the
+  provider differences itself. I think that version was less a wrong choice than a different
+  product.
 </Callout>
 
-## Why ten lines are not ten lines
+## The code lived inside a string
 
-To understand why this code was touched five times in a day you have to see where it lives. **It is not code the server runs — it is code the server writes.**
+I think where the code lived is part of why it was touched five times in one day. The relay logic sat inside a string in a generation template, and the server used that template to stamp out a file for each provider.
 
 <Structure
   hint="Hover a node to keep only what it connects to"
@@ -143,22 +140,16 @@ To understand why this code was touched five times in a day you have to see wher
   ]}
 />
 
-Two things follow.
+So a bug in the template is already copied into every deployed provider. Fixing the template alone doesn't help. Every generated file has to be stamped again, which is why there's a maintenance endpoint that does only that.
 
-First, a bug in the template has already been copied into every deployed provider. **Fixing the template fixes nothing by itself;** every generated file has to be stamped again. That is why a maintenance endpoint exists for exactly that job.
-
-Second, this code is hard to step through. It lives inside a string, so the editor doesn't check its syntax, there is no completion, and there is one extra layer of escaping. Whether `"\n\n"` counts as two characters or four is precisely the confusion that produced the 15:20 bug, and it came from that extra layer.
+It's also hard to step through in a debugger. Inside a string the editor doesn't check syntax, there's no completion, and there's one extra layer of escaping. Whether `"\n\n"` counts as two characters or four is exactly the confusion behind the 15:20 bug, and it came from that extra layer.
 
 ## Where it stands now
 
-Four months later the logic moved out of the template string and became a shared function. Generated files now simply call it. The era of editing code inside a string literal is over.
+Four months later the logic moved out of the template string into a shared function, and the generated files now just call it.
 
-One loss was repaired too. Comment frames beginning with a colon are forwarded verbatim again. Heartbeats are back.
+One loss was repaired too. Comment frames starting with a colon are forwarded untouched again, so heartbeats came back.
 
-## What is still open
+Frames carrying only `event:` and `id:` are still dropped, though. The final implementation handles frames that have `data` and otherwise only checks for a comment, so a frame that is neither reaches nobody. The loss introduced on the morning of 5 August is still there. It hasn't shown up because the providers attached today don't send frames like that.
 
-Frames carrying only `event:` and `id:` are still dropped. The final implementation handles frames that have `data`, and otherwise only checks whether the frame is a comment. A frame that is neither reaches nobody. The loss introduced on the morning of 5 August is still there. Nobody has noticed because the providers currently attached don't send such frames.
-
-The commit messages recorded no symptoms. All five say "improved". Nothing about what broke, nothing about why it was reverted. To write this post I had to lift the four versions out and run them again. What I needed four months later was "this cuts off two characters".
-
-Changing it five times in a day means there was no way to check between deploys. Twenty lines that feed one stream in and compare what comes out would have caught the 15:20 bug before it was committed. I wrote that check for the first time while writing this post. The order should have been the other way round.
+All five commit messages just say "improved", so what broke and why it was reverted can only be found by running the code again. What I needed four months later was one line like "this cuts off two characters". There was also no way to check anything between deploys back then. A check that feeds in one stream and compares what comes out would have caught the 15:20 bug before it was committed.

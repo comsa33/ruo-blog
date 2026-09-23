@@ -10,7 +10,7 @@ The last post was about the memory service attached to an agent. This one is abo
 
 A user says "I'm moving in December" and the model writes that down. But last month it already stored "moving in November". Write a new one, overwrite the old one, or keep both?
 
-The question is whether the two sentences are the same fact, and that is answered with embedding similarity. So: same from what number up?
+The question is whether the two sentences are the same fact, and that's measured with embedding similarity. So from what number up should they count as the same?
 
 ## Where the number sits
 
@@ -69,15 +69,15 @@ The question is whether the two sentences are the same fact, and that is answere
   hint="Hover a node to reveal its connections."
 />
 
-Two thresholds are needed: one for merging duplicates within a category, another for overwriting an older, automatically collected memory. The second is the dangerous one. The first risks leaving a duplicate; the second risks erasing somebody else's fact.
+Two thresholds are needed: one for merging duplicates within a category, another for overwriting an older, automatically collected memory. The second is the more dangerous one, because getting it wrong erases a different fact.
 
 ## What happens if you guess
 
-We started at 0.9, on the theory that a high bar is a safe bar.
+We started at 0.9, because a high bar seemed like the safe one.
 
 Production disagreed immediately. A user corrected their moving date to December, and the stale "November" memory kept coming back as the top search result. The correction hadn't failed to save; both were alive, and the stale one simply retrieved better.
 
-I'd assumed a high threshold was the safe direction. It turned out to be the opposite: the higher it sits, the longer a wrong memory survives.
+I'd assumed a higher threshold was safer, but the higher it sat, the more often a correction failed to overwrite the stale memory and both stayed.
 
 ## So we measured
 
@@ -88,7 +88,7 @@ We collected sentence pairs and scored them with the same embedding model produc
 - Added detail — the same fact with reasoning attached. Overwriting loses the elaboration
 - Different fact — same category, different content. Overwriting destroys someone else's memory
 
-The first two belong above the line, the last two below it. Setting a threshold means laying these four distributions on one axis and finding where to cut.
+The first two belong above the line and the last two below it, so the job is to lay the four distributions on one axis and find where to cut.
 
 <Threshold
   caption="Promotion threshold sweep — 51 real pairs"
@@ -117,9 +117,9 @@ The first two belong above the line, the last two below it. Setting a threshold 
 
 Press 0.80 and two of the four added-detail pairs get overwritten. Push to 0.90 and nothing is wrongly overwritten, but six of twenty same-fact pairs are missed. Only at 0.85 are both protected groups intact.
 
-## The margins are deliberately uneven
+## The margins on either side of 0.85
 
-0.85 wasn't picked for being in the middle. The two directions of failure don't cost the same.
+I picked 0.85 because the two directions of failure don't cost the same.
 
 <Metrics>
   <Metric value="+0.22" label="margin to different facts. Overwriting one destroys it" />
@@ -129,9 +129,9 @@ Press 0.80 and two of the four added-detail pairs get overwritten. Push to 0.90 
   />
 </Metrics>
 
-The thin margin is on the less dangerous side. Losing an elaboration loses the _why_ but keeps the _what_, and history can restore it. Losing a different fact destroys the fact itself, silently.
+If an added detail gets overwritten, you lose the _why_ but keep the _what_, and history can restore it. If a different fact gets overwritten, the fact itself is gone, and nobody knows it's gone.
 
-So the margin was given to the dangerous axis. The asymmetry between 0.22 and 0.006 is deliberate.
+So the margin went to the dangerous side, and that's where the gap between 0.22 and 0.006 comes from.
 
 The same principle set the merge threshold, measured separately over 28 pairs.
 
@@ -184,9 +184,9 @@ Measuring surfaced a region no threshold reaches.
   ]}
 />
 
-Same kind of correction: **caught when the frame is preserved, missed when it isn't.** Lowering the threshold doesn't fix this — going lower starts overwriting genuinely different facts.
+Same kind of correction, but it's caught when the sentence frame is preserved and missed when it isn't. Lowering the threshold can't fix it either, since going lower starts overwriting genuinely different facts too.
 
-I don't think this is a question similarity can be asked at all. Tuning the number won't reach it; the model has to name the memory it is replacing. Learning where 0.85 stops applying was the biggest thing this measurement produced.
+I don't think this is a question similarity can answer at all. My view is that the model has to name the memory it's replacing, explicitly.
 
 ## On the read path we dropped thresholds entirely
 
@@ -205,9 +205,9 @@ The measurement said otherwise.
   note="Cutting made it worse. The cause: <strong>score scale differs by query type.</strong> A topical query's top hit scored 0.397; a personal-fact query's top hit scored 0.092. Put them on one axis and the personal-fact side loses its correct answers first."
 />
 
-Embedding scores aren't absolute. The same 0.3 is a top hit for one query and noise for another. On the write path two sentences are compared directly, so the value means something; in search **the axis moves with every query.**
+The same 0.3 was a top hit for one query and noise for another. On the write path two sentences are compared directly, so the score itself means something; in search, the range the scores fall in shifts from query to query.
 
-So search has no absolute threshold, only ordering. Narrowing is done with conditions instead of scores.
+So search has no absolute threshold, only ordering, and narrowing the results is done with conditions instead of scores.
 
 <Compare
   caption="Recall after adding a scope filter"
@@ -222,12 +222,10 @@ So search has no absolute threshold, only ordering. Narrowing is done with condi
 
 ## What this doesn't prove
 
-Stated plainly.
+It isn't a significance test; it's a decision-support measurement of whether the empirical distributions of real pairs separate. Embeddings are deterministic, so the same pair always scores the same and repeating the measurement means nothing. The one uncertainty left is whether this sample represents the population.
 
-It isn't a significance test. It is decision-support: does the empirical distribution of real pairs separate? Embeddings are deterministic, so the same pair always scores the same. Repeating the measurement means nothing, and there is exactly one source of uncertainty — whether this sample represents the population.
+One of the protected groups is thin. Added-detail has only four pairs, because that shape of memory is rare in the corpus and a second mining pass couldn't grow it. So the 0.006 margin can't be tightened by collecting more samples; it has to be corrected against the score distribution in production logs.
 
-One of the protected groups is thin. Added-detail has four pairs. That shape of memory is genuinely rare in the corpus and a second mining pass couldn't grow it. The 0.006 margin can't be tightened with sampling. It has to be corrected against the score distribution in production logs, and frequent hits near 0.85 are the signal to raise the line.
+The domain is narrow too. The pairs come from conversations with three work personas, so sentence shapes from other domains were never measured.
 
-The domain is narrow. The pairs come from three work personas. Sentence shapes from other domains were never measured.
-
-Still, a threshold is measured, not chosen, and when someone asks where 0.85 came from there is now a table to show them. The table only answers that far. What to do about reframed corrections sits outside the number, and I haven't touched it yet. Before that I want to count how often production logs land near 0.85.
+Now, when someone asks where 0.85 came from, there's a table to show them. I haven't touched the reframed corrections yet. Before that, since frequent hits near 0.85 would mean raising the threshold, I plan to count how often production logs land there.
