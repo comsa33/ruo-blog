@@ -55,8 +55,7 @@ A2A 로 바꾸고 개발 클러스터에서 해 보니, 오케스트레이터 �
   edges={[
     { from: 'user', to: 'orch', label: '질문' },
     { from: 'orch', to: 'catalog', label: '매 턴 조회' },
-    { from: 'orch', to: 'gateway', label: '카드 → 도구' },
-    { from: 'gateway', to: 'orch', label: 'tool call', dashed: true },
+    { from: 'orch', to: 'gateway', label: '도구 목록 · tool call' },
     { from: 'orch', to: 'workers', label: 'SendMessage' },
   ]}
   hint="노드에 커서를 올리면 연결과 설명이 나타납니다."
