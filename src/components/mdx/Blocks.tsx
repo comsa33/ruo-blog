@@ -39,11 +39,15 @@ export function Figure({
   src?: string;
   alt?: string;
   caption?: string;
-  /** Phone screenshots, each a third of the frame, in one centred row. */
+  /** Phone screenshots, each a third of the frame, in one centred row
+      with the caption aligned to its left edge. */
   screens?: { src: string; alt: string }[];
 }) {
   return (
-    <figure className={styles.figure}>
+    <figure
+      className={`${styles.figure} ${screens ? styles.screensFigure : ''}`}
+      style={screens ? ({ '--screens': screens.length } as React.CSSProperties) : undefined}
+    >
       {/* Plain <img>: screen readers announce it and right-click copy works. */}
       {screens ? (
         <div className={styles.screens}>

@@ -75,15 +75,28 @@
 }
 
 /* A phone screen at full frame width is two viewports tall, so screens are
-   fixed at a third of the frame whether there is one of them or three. */
+   fixed at a third of the frame whether there is one of them or three. The
+   row and the caption share one width and are centred together, so the
+   caption starts where the first screen does. */
+.screensFigure {
+  --screens-width: calc((100% - 32px) / 3 * var(--screens) + 16px * (var(--screens) - 1));
+}
+
 .screens {
   display: flex;
-  justify-content: center;
   gap: 16px;
+  width: var(--screens-width);
+  margin-inline: auto;
 }
 
 .screens img {
-  width: calc((100% - 32px) / 3);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.screensFigure .figcaption {
+  width: var(--screens-width);
+  margin-inline: auto;
 }
 
 .figcaption {
