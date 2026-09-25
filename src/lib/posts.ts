@@ -148,12 +148,16 @@ function readPost(slug: string, lang: Lang): PostMeta | null {
 export function getPosts(lang: Lang): PostMeta[] {
   if (!fs.existsSync(CONTENT_DIR)) return [];
 
+  // Drafts show in dev and on Vercel preview deployments (which sit behind
+  // Vercel's login), never on production.
+  const showDrafts = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview';
+
   return fs
     .readdirSync(CONTENT_DIR, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => readPost(e.name, lang))
     .filter((p): p is PostMeta => p !== null)
-    .filter((p) => !p.draft || process.env.NODE_ENV === 'development')
+    .filter((p) => !p.draft || showDrafts)
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 

@@ -56,7 +56,7 @@ description: '한 줄 요약. 목록과 검색 결과에 그대로 노출된다.
 topic: '에이전트 메모리' # required — what the post is about
 date: 2026-09-08 # YYYY-MM-DD
 tags: ['프롬프트 설계', 'LLM', '한국어']
-draft: false # true hides it in production, shows it in dev
+draft: false # true hides it in production, shows it in dev and on Vercel previews
 ---
 ```
 
@@ -79,6 +79,7 @@ system (`에이전트 메모리`), half named a phenomenon (`시간대 경계`,
 | `동적 실행 엔진` / `Dynamic execution engine` | user code loaded and served at runtime |
 | `오픽 앱` / `OPIc app`                        | the author's own mock-test app         |
 | `지도 인터페이스` / `Map interfaces`          | the transit map work                   |
+| `사주할매` / `Saju Halmae`                    | the author's saju app                  |
 
 Add a new `topic` only for a system that has no home here yet — not for a new
 subject inside one that does.
@@ -175,6 +176,8 @@ into "back to top" once the end is reached. Labels live in `src/lib/site.ts`.
 
 `<Compare>` before/after bars · `<Metrics>` + `<Metric>` headline numbers ·
 `<Callout>` aside · `<Term>` inline jargon tooltip · `<Figure>` image + caption
+(`screens={[{ src, alt }, …]}` puts phone screenshots in one row, each a third
+of the frame — a portrait screen at full width is two viewports tall)
 
 ### Tildes in prose are strikethrough
 

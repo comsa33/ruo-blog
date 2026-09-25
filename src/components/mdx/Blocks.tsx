@@ -30,12 +30,32 @@ export function Metric({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function Figure({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+export function Figure({
+  src,
+  alt,
+  caption,
+  screens,
+}: {
+  src?: string;
+  alt?: string;
+  caption?: string;
+  /** Phone screenshots, each a third of the frame, in one centred row. */
+  screens?: { src: string; alt: string }[];
+}) {
   return (
     <figure className={styles.figure}>
       {/* Plain <img>: screen readers announce it and right-click copy works. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} loading="lazy" />
+      {screens ? (
+        <div className={styles.screens}>
+          {screens.map((s) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={s.src} src={s.src} alt={s.alt} loading="lazy" />
+          ))}
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={alt} loading="lazy" />
+      )}
       {caption && <figcaption className={styles.figcaption}>{caption}</figcaption>}
     </figure>
   );

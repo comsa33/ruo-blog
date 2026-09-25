@@ -1,0 +1,119 @@
+---
+title: 'Building Saju Halmae (1): from picking a manseryeok engine to store review'
+description: 'A saju app whose calendar maths is plain code and whose long readings are written by AI in a grandmother’s voice. From an empty repo on the night of September 23 to both stores’ review queues on the 25th.'
+topic: 'Saju Halmae'
+date: 2026-09-25
+tags: ['Launch', 'manseryeok']
+draft: true
+---
+
+I built a saju (Korean four-pillars fortune reading) app called Saju Halmae — roughly "Grandma Saju" — and submitted it to the App Store and Google Play. The manseryeok, meaning the eight characters of a birth chart, the ten-year luck cycles and the day's pillar, is computed in code, and the long readings are written by AI in a grandmother's voice. I created an empty repo at 11pm on September 23 and put the app into review at both stores at 2pm on the 25th.
+
+## The calculation would not be left to an LLM
+
+This went into the first commit, alongside the spec. Values like the stems and branches, the ten gods, combinations and clashes, and the luck cycles come out of deterministic code, and the LLM only ever receives finished results. My feeling was that if an LLM did the calculation too, it would give a plausible reading of the wrong chart.
+
+That leaves the question of what does the calculation. Instead of writing a manseryeok myself, I lined up published libraries as candidates and decided to build a separate answer key, independent of any of them, to check them against. The answers came from here:
+
+| Item                                         | Source of truth                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Solar term instants (year and month pillars) | NASA JPL DE440s ephemeris + Skyfield: the moment the sun's ecliptic longitude crosses a multiple of 15° |
+| Day pillar                                   | Julian Day Number (JDN) formula                                                                         |
+| Hour pillar                                  | Mean solar time at 127.5°E, apparent solar time in Seoul                                                |
+| Wall clock ↔ UTC                             | IANA tzdata `Asia/Seoul` (including UTC+8:30 in 1954\~61 and the daylight saving years)                 |
+| Lunar calendar                               | KASI lunar tables                                                                                       |
+
+The cases covered ±2 and ±10 minutes around every solar term instant from 1912 to 2050, the boundary of the midnight hour, ±3 minutes around each hour boundary, leap months from 1900 to 2050, the start of each luck cycle and the like, and they came to 9,980.
+
+Of the three candidates, `@fullstackfamily/manseryeok` dropped out because it only has solar term times for 2020 to 2030, and `lunar-python` because it follows the Chinese lunar calendar. The one left, `manseryeok` 2.0.0 (TypeScript, MIT), matched the answer key on all 9,980 cases when run with its apparent-solar-time option always on. The app uses it as is. Its screens always state the settings that change the result, such as the time correction, the midnight hour convention and daylight saving.
+
+## No database on the server
+
+The storage design was settled the same night. There's no database of ours; the server only has functions that take a request, compute a chart or generate a reading, and end. Birth dates and times, and the readings, are stored only on the user's device. Computing the manseryeok goes through the server but nothing is kept, and generating a reading sends the AI only the computed chart. The name and the raw birth date and time are never sent. The point was to avoid the obligations that come with holding personal data, and fixed costs. The price is that readings can only be restored within the same OS backup (iCloud, Android auto backup).
+
+Payments were fitted to the same structure. No subscription and no ads; long readings are bought one at a time with coins. The coin balance lives in RevenueCat. But RevenueCat has no API for looking up transactions, so there was no way to verify a flow that deducts first and refunds if the reading fails. So the deduction happens after the reading has been generated and validated. If it fails, no deduction takes place at all.
+
+## From 14 and over to 18 and over
+
+At first the age limit was 14 and over, the line that avoids needing a legal guardian's consent. The next day a research session, rereading the Google Cloud terms of service in the original, found that the clause against using it for services likely to be used by people under 18 applies to Vertex AI too. I had picked Vertex AI thinking the clause only applied to the Gemini API, and that reasoning didn't hold. The age limit went up to 18 and over.
+
+## The name: Nakgwan, then Saju Halmae
+
+The first name was Nakgwan. The design had already settled on stamping a single red seal, and the word carries both meanings, the seal on a painting (落款) and optimism (樂觀). It became Saju Halmae the same day. The app icon is a single white 命 (fate) on red.
+
+When the name changed, the plan was still to keep the readings in the formal register and leave a grandmother character out of it.
+
+## Making the grandmother the voice
+
+Reading sample readings, the Chinese characters and jargon were hard and the tone was vague, like a hermit sage talking. This was not writing for people in their 20s and 30s. Checking the samples, sentences ran to 70-odd characters, each paragraph had three to five technical terms, and there was not one scene from everyday life. I switched it to the polite everyday register and had each paragraph go conclusion, simple reason, a scene from daily life, something to do.
+
+It still didn't read. What I said at the time was "it's no fun", "the text is small and dense, like a paper" and "so what's the conclusion". I had a real LLM write the same section of the same chart in four candidate voices: the current polite register, a grandmother telling it as a story in casual speech, a grandmother speaking politely, and short with the conclusion first. The grandmother in casual speech read as a story. It also showed a tendency for vague phrasing to leak in as the metaphors multiplied.
+
+I figured that unless the persona was pinned down it would keep drifting, so before fixing the voice I wrote down who the grandmother is. Seventy or so, has read her neighbours' charts for more than forty years, draws a line between herself and fortune-telling, exorcism and talismans, and speaks from the characters in the chart. She calls herself Halmae, gives the conclusion first, and never tries to frighten anyone. A table also set out which sentence endings she uses and which she doesn't. The readings were cut to half their length.
+
+Readings now come out like this.
+
+These are the first two paragraphs of a lifetime reading for an example profile (born January 10, 1985).
+
+> Let's see now. What Halmae sees is that the central character of the day you were born is 己 (gi), soft as a field. It's earth that takes anything in and makes it sprout, so you've an uncommon heart for looking after the people around you. You've a real knack for quietly doing your part and tending home and work, bit by bit. (Basis: day stem 己)
+>
+> You've 丑 (chuk) in the month branch, the ground of the month you were born, so you've drawn firm strength from the season (deungnyeong). Like the frozen ground waiting for spring, you've a way of holding on quietly, and you don't crumble easily. (Basis: deungnyeong · month branch, peer)
+
+The reading text is written by AI (Gemini on Google Cloud Vertex AI) in this grandmother's voice. Halmae speaks in the reading material — the readings, today's fortune, the cards — while payments, terms, errors and privacy notices are in the app's own polite register.
+
+## Every paragraph cites its characters
+
+Each paragraph of a reading carries which characters of your chart it was said from. Tap it and those characters light up in the chart. Paragraphs that cite a character not in the chart are filtered out by the server.
+
+<Figure
+  screens={[
+    {
+      src: '/posts/saju-halmae-making-of-1/reading.webp',
+      alt: 'The lifetime reading screen: the chart at the top, a paragraph in the grandmother’s voice and chips naming the characters it cites',
+    },
+  ]}
+  caption="The lifetime reading screen, for the same example profile as the quote above. The chips under each paragraph are the characters it cites"
+/>
+
+Once the validation was in, readings kept failing. One paid reading is made of seven sections, and if one section fails validation the whole reading fails. Each rule tripped only now and then, but multiplied across seven sections it tripped often. So I changed it to fail only on what the prompt forbids, and to just log the other rules, like the length of the conclusion line.
+
+The minimum length had the same problem. On the morning of the day we submitted, a lifetime reading I got on a real device failed because one section came in slightly under the minimum. I lowered the minimum from 85% to 75%, and next the compatibility reading failed for the same reason. It seemed the model just writes that section short. The minimum is now logged rather than a reason to fail, except that a section under half the target still fails. The failed readings didn't deduct any coins.
+
+The model also copied a good example sentence in the prompt word for word, so people with different charts got the same concluding sentence. The prompt now holds only a frame and bad examples instead of example sentences.
+
+## Several Claude Code sessions split the work
+
+Nearly all the code was written by Claude Code. One session acted as lead, keeping the spec and the decision log (numbered from D1), while the app, the server, design, copy, QA and store work each went to a different session that opened PRs. The lead session reran the acceptance criteria and merged. My part was setting the direction and checking on real devices. Over two days, 129 PRs were merged.
+
+At first several sessions worked in one folder, switching branches. Then three of the lead's commits were pushed to the design branch. Since then each session works only in its own git worktree.
+
+I gave up on checking Android screens with the emulator. Black screens, GPU hangs and clock drift cost an hour every time. What I said then was "wasting tokens, eating an hour each time, it's the bottleneck". Now I check with iOS simulator captures and headless widget tests, and for Android I take `adb screencap` of the build installed on my Galaxy.
+
+## What's in it now
+
+- Free, no login: the manseryeok chart (the eight characters, ten gods, hidden stems, twelve life stages, five-element balance, combinations and clashes, spirit stars, void), the luck-cycle and yearly tables, today's fortune with a morning notification, and a one-line meaning when you tap a term
+- Coins: lifetime reading 90 coins, this year's fortune 70 coins, compatibility 50 coins. Coin packs are ₩3,300 (30), ₩9,900 (99) and ₩29,000 (348). Login is only for buying coins, with Apple or Google
+- Three share cards (my chart, today's fortune, one paragraph of a reading). By default they include neither the birth date nor the eight characters
+- Only for people 18 and over. Readings are reference text written by AI and don't stand in for medical, legal or investment decisions
+
+<Figure
+  screens={[
+    {
+      src: '/posts/saju-halmae-making-of-1/chart.webp',
+      alt: 'The manseryeok chart screen: the eight characters, ten gods, five-element balance and the button to get a lifetime reading',
+    },
+    {
+      src: '/posts/saju-halmae-making-of-1/today.webp',
+      alt: 'The today screen: the day’s pillar, one line from Halmae and the morning notification time',
+    },
+  ]}
+  caption="The chart and today’s fortune, for the same example profile"
+/>
+
+The app is Flutter, calculation and readings run as Firebase server functions, and payments are RevenueCat.
+
+- App Store: [APP_STORE:L1]
+- Google Play: [PLAY:L1]
+- About page: [https://saju.po24lio.com](https://saju.po24lio.com)
+
+I submitted to the App Store at 2:09pm on the 25th and to Google Play at 2:14pm. The build number is 7.

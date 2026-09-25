@@ -74,6 +74,18 @@
   border-radius: var(--radius);
 }
 
+/* A phone screen at full frame width is two viewports tall, so screens are
+   fixed at a third of the frame whether there is one of them or three. */
+.screens {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.screens img {
+  width: calc((100% - 32px) / 3);
+}
+
 .figcaption {
   margin-top: 10px;
   font-family: var(--font-mono);
