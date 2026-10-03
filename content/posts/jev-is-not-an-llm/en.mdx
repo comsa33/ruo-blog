@@ -1,0 +1,155 @@
+---
+title: 'How Jev differs from an LLM'
+description: 'Notes from studying Jev, a model that writes no text and only puts probabilities on answers you define, side by side with an LLM: scoring in one pass, reading text instead of photos, and whether 0.96 means 96%.'
+topic: 'World trip site'
+date: 2026-10-02
+tags: ['Classification', 'Jev']
+draft: false
+---
+
+I woke up one morning to find a model called Jev all over YouTube and GeekNews, suddenly the hot topic. It comes from TypeSafe AI, a San Francisco company, and went into limited early access on September 15, 2026. Diogo Almeida, its co-founder and CEO, reportedly spent about four years at OpenAI on RLHF, InstructGPT and ChatGPT before leaving in 2024.
+
+I looked at an open-source model that does similar work, too. Free was tempting, but training it and running a heavy model on my own server felt like a burden. Jev costs $0.042 per million input tokens and doesn't charge for output, and I figured that would come out cheaper than running a server myself.
+
+Since then I've put Jev into two of my sites: a job-posting match on my portfolio site, and photo themes and free-text search on my world trip site. This post collects what I worked out about how Jev differs from an LLM, before and after wiring it in. The world trip site gets its own post next.
+
+## A model that doesn't write sentences
+
+A request to Jev has two parts: the `state` to judge (text or JSON) and the `questions` you ask about it. There are only three kinds of question.
+
+| Type     | Asks                                      | Returns                                                             |
+| -------- | ----------------------------------------- | ------------------------------------------------------------------- |
+| `noul`   | yes or no                                 | one probability between 0 and 1                                     |
+| `choice` | one of the options you define (up to 255) | the pick, a probability per option, a confidence                    |
+| `score`  | where it sits on ordered levels (2 to 10) | a probability-weighted score, a probability per level, a confidence |
+
+For one photo on the world trip site the request looked like this. There were thirteen questions per photo, all `noul`.
+
+```json
+{
+  "model": "jev-latest",
+  "state": { "city": "…", "local_time": "…", "apple_caption": "…", "scene": "…" },
+  "questions": {
+    "water": {
+      "type": "noul",
+      "instructions": "Does the photo described in the state show a large body of water, such as the sea, a lake, a river, a canal, a waterfall or a harbour, as a main part of the scene?"
+    },
+    "mountain": { "type": "noul", "instructions": "…" }
+  }
+}
+```
+
+What comes back isn't a sentence. It's values like `{"water": {"type": "noul", "noul": 0.96}, …}`. Give the same job to an LLM and you end up asking it to "answer only in JSON", parsing the text it returns, and calling it again when the format breaks. Jev can't return anything outside the shape you defined in the first place. TypeSafe's own docs say it doesn't write replies, produce code or explain its reasoning.
+
+That was what settled it for the portfolio site, the first place I used it. You paste in a job posting and it picks the matching projects and moves them up. If an LLM rewrote my project descriptions to fit the posting, that would be a problem. Claude Code, which was reviewing it with me, put it as "Jev doesn't write sentences, so it can't make up career facts", and that's the reasoning I went with.
+
+## Writing one token at a time versus scoring everything at once
+
+An LLM writes by repeatedly predicting the next token. Each token is one more pass through the whole model, so a longer answer takes longer. Ask it for a yes or no on each of thirteen questions and the computation runs as long as the answer does.
+
+Jev doesn't work that way. In TypeSafe's words, it "ingests the state once and evaluates every question against it in parallel." They haven't published the architecture, the weights or a paper. From outside, Wikipedia calls it a discriminative model for classification and regression, and others describe it as scoring all the options in a single pass.
+
+Step through it below and you can see the difference. The right side is what Jev actually returned for one photo of Iguazú Falls on the world trip site. The left side is a sketch of how an LLM would write out the same thirteen answers (it isn't a real LLM output).
+
+<PassCount
+  caption="One photo, thirteen questions"
+  question="Does this photo's description show water? Mountains? … thirteen questions in all (iguazu-027)"
+  llm={{
+    label: 'LLM — one token at a time',
+    note: 'One token per pass. Writing all thirteen takes as many passes as the answer is long. (sketch)',
+    tokens: [
+      'water',
+      'mountain',
+      'desert',
+      'snow',
+      'street',
+      'architecture',
+      'food',
+      'transit',
+      'animal',
+      'golden hour',
+      'night',
+      'things',
+      'people',
+    ].flatMap((c, i) => [c, ':', i === 0 ? ' yes' : ' no', '\n']),
+  }}
+  jev={{
+    label: 'Jev — all at once',
+    note: 'All thirteen come out of the first pass. A longer answer adds no passes, and output tokens are free.',
+    answers: [
+      { label: 'Water', p: 0.96 },
+      { label: 'Mountains', p: 0.09 },
+      { label: 'Desert', p: 0.02 },
+      { label: 'Snow', p: 0.02 },
+      { label: 'Street', p: 0.02 },
+      { label: 'Architecture', p: 0.04 },
+      { label: 'Food', p: 0.01 },
+      { label: 'Transit', p: 0.04 },
+      { label: 'Animals', p: 0.03 },
+      { label: 'Golden hour', p: 0.09 },
+      { label: 'Night', p: 0.12 },
+      { label: 'Things', p: 0.02 },
+      { label: 'People', p: 0.03 },
+    ],
+  }}
+  passText="{n} passes"
+  stepLabel="One pass"
+  runLabel="Run to the end"
+  resetLabel="Start over"
+/>
+
+So it's meant to be fast, but how fast depends a lot on who's measuring. TypeSafe says 40 to 200 times faster than frontier LLMs, and Wikipedia reports that as the company's claim. Nhu Hoang, writing in Towards Data Science, tested it on 3,080 bank-support messages: Jev's median was 245 ms per request and a locally run Qwen3-Coder-Next-80B-A3B's was 249 ms, nearly the same. My guess is that "so many times faster" swings a lot depending on what you compare it with.
+
+## Jev doesn't look at the photo
+
+Jev takes text only. You can't send it an image. So how did I ask about 1,944 photos? I sent text about each photo instead: the city, the address, the local time, and the description and scene labels that the iPhone Photos app writes for every photo.
+
+So the "water 0.96" above is a judgement about the description the Photos app wrote. Whether a waterfall is visible was really decided by the Photos app first, and if the description is thin or wrong, Jev follows it.
+
+## Does 0.96 mean 96%?
+
+What Jev sells is probabilities you can trust. Even the training method is named for it: RLCD, reinforcement learning for calibrated decisions. Unlike RLHF, which rewards the answers people prefer, it's said to train the probabilities it gives to match real outcomes.
+
+Being well calibrated means this: gather everything the model answered with 0.8, and about 80% of those should be right. It's not a promise about any single answer; it's a property of the group. TypeSafe's docs say so plainly, that calibration is measured across groups of predictions and doesn't guarantee any individual answer is correct.
+
+Outside measurements, though, looked different from band to band. Split Nhu Hoang's test by confidence and you get this.
+
+<Calibration
+  caption="What it said versus how often it was right"
+  saidLabel="Confidence the model gave"
+  rightLabel="Share actually right"
+  rows={[
+    { band: '1.00', said: 1.0, right: 0.971 },
+    { band: '0.90–0.99', said: 0.95, right: 0.79 },
+    { band: '0.70–0.90', said: 0.81, right: 0.53 },
+  ]}
+  source="Nhu Hoang, “Jev vs. LLMs” (Towards Data Science, 2026-09-25). Banking77, 3,080 messages. For 0.90–0.99 and 0.70–0.90, the confidence shown is the average within the band."
+/>
+
+Answers at 1.00 were almost always right, but in the 0.7 to 0.9 band it averaged 0.81 and was right only a little over half the time. Other measurements put its calibration error (ECE) anywhere from 0.002 to 0.246, depending on the data and the question type. So rather than reading 0.96 as 96%, I think it's safer to read it as an ordering that ranks the photos within one question.
+
+## It picks an answer even when none fits
+
+Nhu Hoang also gave it 30 messages that didn't belong to any category. Jev picked one of the listed categories for all 30, every time with confidence of 0.99 or more. This is the flip side of not being able to answer outside your options: if you don't offer "none of these", it has no way to say so.
+
+The same thing happened on my portfolio site. I put a `noul` question in front, asking whether the pasted text was a job posting, and only let it through above 0.5. A weather article was turned away, but a company's about page and a cover letter both passed as postings. I suspect it's because they read close to hiring. Both came back with zero matching projects, so I changed it to leave the screen as it was and explain in the input box when nothing matched.
+
+TypeSafe keeps its own list of where the model is weak. These are the ones I paid attention to.
+
+- It reads dates as text, not as ordered quantities
+- It's not a calculator; counting and adding are weak spots
+- In a `choice`, option order can affect the answer, and it leans toward the first option
+- It doesn't treat the text in the state as hostile, so instructions planted inside it can move the answer
+- The more unrelated content there is in the state, the lower the accuracy
+
+The world trip site's "night" question asks it to judge from darkness or lighting in the description and also from the local time. If it reads times as text, that second part may not have worked as well as I expected. Feeding it the same description with only the time changed would probably tell me.
+
+## Can I ask in Korean?
+
+TypeSafe's docs say English is the main training language and that other languages, Korean included, are handled but not equally well. Korean postings would come into the portfolio site, so I tested it before wiring it in.
+
+Claude Code ran the test. It wrote three made-up job postings (agent backend, NLP research, mobile app) in Korean and in English, and had Jev rate my 14 projects with a `score` question. The rankings from the Korean postings matched the English ones with a rank correlation of 0.89 to 1.00, and a Korean posting against English project descriptions came closest, at 0.97 to 1.00. That's what I shipped it on.
+
+Looking back, it was an easy test. The same agent wrote all three postings and decided which projects were the right answers, and the postings were blunt about their keywords. Putting in a few real job postings and grading the answers myself would probably show how well it holds up in Korean.
+
+What to ask, which options to offer, and where to draw the line between yes and no are still up to whoever is calling it. On the world trip site I drew that line separately for each of thirteen photo themes, and that's the next post.

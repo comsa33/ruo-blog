@@ -14,6 +14,9 @@ import { Transform } from '@/components/diagram/Transform';
 import { Spread } from '@/components/diagram/Spread';
 import { Legibility } from '@/components/diagram/Legibility';
 import { ScreenCompare } from '@/components/diagram/ScreenCompare';
+import { PassCount } from '@/components/diagram/PassCount';
+import { Calibration } from '@/components/diagram/Calibration';
+import { ProbabilityCut } from '@/components/diagram/ProbabilityCut';
 
 /**
  * The kit available inside every post. Adding here is how the blog grows new
@@ -41,6 +44,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     Spread,
     Legibility,
     ScreenCompare,
+    PassCount,
+    Calibration,
+    ProbabilityCut,
     ...components,
   };
 }
