@@ -1,0 +1,151 @@
+.wrap {
+  margin: 34px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 20px 22px 8px;
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.keySaid,
+.keyRight {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  margin-left: 8px;
+}
+
+.keySaid {
+  border: 1px solid var(--ink-tertiary);
+}
+
+.keyRight {
+  background: var(--accent);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 22px 18px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 92px 1fr 118px;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.band {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.track {
+  position: relative;
+  height: 14px;
+}
+
+.said,
+.right {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform var(--dur-slow) var(--ease-out);
+  transition-delay: calc(var(--i) * 80ms);
+}
+
+.said {
+  border: 1px solid var(--ink-tertiary);
+}
+
+.right {
+  top: 3px;
+  height: 8px;
+  background: var(--accent);
+  transition-delay: calc(var(--i) * 80ms + 160ms);
+}
+
+.shown .said,
+.shown .right {
+  transform: scaleX(1);
+}
+
+.values {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-secondary);
+}
+
+@media (max-width: 560px) {
+  .values {
+    justify-content: flex-start;
+  }
+}
+
+.arrow {
+  color: var(--ink-tertiary);
+}
+
+.rightValue {
+  color: var(--accent);
+}
+
+.source {
+  padding: 12px 22px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .said,
+  .right {
+    transition: none;
+    transform: scaleX(1);
+  }
+}

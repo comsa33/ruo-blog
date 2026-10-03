@@ -73,13 +73,14 @@ string. This was inconsistent for the first fourteen posts — half named a
 system (`에이전트 메모리`), half named a phenomenon (`시간대 경계`,
 `수요 계절성`), which is why the index had no visible axis. The live values:
 
-| `topic` (ko / en)                             | What it covers                         |
-| --------------------------------------------- | -------------------------------------- |
-| `에이전트 메모리` / `Agent memory`            | the memory service                     |
-| `동적 실행 엔진` / `Dynamic execution engine` | user code loaded and served at runtime |
-| `오픽 앱` / `OPIc app`                        | the author's own mock-test app         |
-| `지도 인터페이스` / `Map interfaces`          | the transit map work                   |
-| `사주할매` / `Saju Halmae`                    | the author's saju app                  |
+| `topic` (ko / en)                             | What it covers                                   |
+| --------------------------------------------- | ------------------------------------------------ |
+| `에이전트 메모리` / `Agent memory`            | the memory service                               |
+| `동적 실행 엔진` / `Dynamic execution engine` | user code loaded and served at runtime           |
+| `오픽 앱` / `OPIc app`                        | the author's own mock-test app                   |
+| `지도 인터페이스` / `Map interfaces`          | the transit map work                             |
+| `사주할매` / `Saju Halmae`                    | the author's saju app                            |
+| `세계일주 사이트` / `World trip site`         | the author's backpacking site and its Jev search |
 
 Add a new `topic` only for a system that has no home here yet — not for a new
 subject inside one that does.
@@ -122,18 +123,21 @@ with no import. **Prefer composing these over writing new components.**
 
 ### Explanatory engines — use these first
 
-| Component         | Use it for                                                                                                                                                        |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<Structure>`     | System architecture. Hovering a node dims everything it is not connected to.                                                                                      |
-| `<Sequence>`      | Ordered interaction between actors. Step through, or auto-play.                                                                                                   |
-| `<Breakdown>`     | What a single number is made of. One bar, hoverable segments.                                                                                                     |
-| `<Series>`        | A measurement over time. Lines draw themselves once on reveal.                                                                                                    |
-| `<Transform>`     | The same input through different pipelines, with the output re-resolving.                                                                                         |
-| `<Threshold>`     | Cluster distributions against a threshold the reader can move.                                                                                                    |
-| `<Playground>`    | A parameter the reader drags, with consequences recomputed.                                                                                                       |
-| `<Spread>`        | Every measurement on one log axis, against a cut the reader can move.                                                                                             |
-| `<Legibility>`    | One shape at two real display sizes, with its feature size measured at each.                                                                                      |
-| `<ScreenCompare>` | Two or three app screens side by side, redrawn from the app's code (its strings, button order and colours as props). A toggle marks where a habitual thumb lands. |
+| Component          | Use it for                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<Structure>`      | System architecture. Hovering a node dims everything it is not connected to.                                                                                                          |
+| `<Sequence>`       | Ordered interaction between actors. Step through, or auto-play.                                                                                                                       |
+| `<Breakdown>`      | What a single number is made of. One bar, hoverable segments.                                                                                                                         |
+| `<Series>`         | A measurement over time. Lines draw themselves once on reveal.                                                                                                                        |
+| `<Transform>`      | The same input through different pipelines, with the output re-resolving.                                                                                                             |
+| `<Threshold>`      | Cluster distributions against a threshold the reader can move.                                                                                                                        |
+| `<Playground>`     | A parameter the reader drags, with consequences recomputed.                                                                                                                           |
+| `<Spread>`         | Every measurement on one log axis, against a cut the reader can move.                                                                                                                 |
+| `<Legibility>`     | One shape at two real display sizes, with its feature size measured at each.                                                                                                          |
+| `<ScreenCompare>`  | Two or three app screens side by side, redrawn from the app's code (its strings, button order and colours as props). A toggle marks where a habitual thumb lands.                     |
+| `<PassCount>`      | Forward passes as the clock: one press, one more token for a generating model, every answer at once for a scoring one. The LLM lane is an illustration; the scoring answers are real. |
+| `<Calibration>`    | What a model said against how often it was right, per confidence band, as paired bars. The gap is the overconfidence.                                                                 |
+| `<ProbabilityCut>` | One yes/no question's probabilities over a whole dataset as a histogram (0.05 bins), with a line the reader moves and the line that shipped.                                          |
 
 ### Reading chrome — automatic, never authored
 
