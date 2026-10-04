@@ -1,0 +1,104 @@
+---
+title: 'Choosing Jev to tag weaknesses in OPIc answers'
+description: 'Picking Jev as the judge after it lost to Gemini 9 to 7, rewriting the questions to take accuracy from 70% to 93–97%, and why Jev can’t catch an answer the transcription made up.'
+topic: 'OPIc app'
+date: 2026-10-04
+tags: ['Collection', 'Jev']
+draft: true
+---
+
+Jev went into my OPIc mock-test app too. The first two posts covered how Jev differs from an LLM and how I used it for photos and search on my world trip site. This time what it judges is English that people spoke, or more precisely, what Gemini transcribed of what they said.
+
+## Data before lectures
+
+It started with lectures aimed at weaknesses. I had a premium feature in mind: after a test, pick out weak points from the per-question feedback and recommend a three-minute lecture for each. But the only thing the server kept was one average score per test. The detailed per-question feedback lived only on the user's device, so there was no way to count which weaknesses people actually had.
+
+So I changed the order. Instead of building lectures first, collect the data first. Every time a real-test answer is analysed, judge its weakness tags and store one row; build the lectures once that has piled up. Nothing on the user's screen changes.
+
+The tags were split by who judges them. Things you can count, like word count, speaking rate, number of sentences and kinds of linking words, are counted in code; as the first post said, Jev isn't a calculator. Things you have to hear, like pronunciation, come out of Gemini's grading. What's left are 21 tags that need reading and judgement, like "did they tell a past event in the present tense" or "did they fail to answer the question". The question was what should judge those.
+
+## Gemini won the evaluation
+
+There were two candidates: Gemini, already used for grading, and Jev. We took 30 synthetic answers with human-labelled tags and asked both judges the same questions. Gemini did better 9 times, Jev 7 times, and they tied 6 times. By the rule set beforehand that meant Gemini, and that's what was decided; the judge code was merged on the Gemini side.
+
+The same evaluation had other numbers in it, though. One judgement took 1.4 seconds on Gemini and 0.19 seconds on Jev. Gemini cost $0.000453 per call; Jev, at $0.042 per million input tokens, comes to around $0.00005 per answer, about a tenth. And judging with Gemini would share the same Vertex capacity as grading, so either one could start getting 429s.
+
+Seeing those numbers, I overturned it: "It's much faster and cheaper — find a way to optimize it." The merged Gemini judge stayed for evaluation only, and Jev became the production judge.
+
+## Rewriting the questions took 70% to 93–97%
+
+A working session did the optimizing. For each weak tag it wrote a few candidate questions, put them side by side in one request, and picked whichever matched the human labels best. The biggest change was in the tag for a missing third-person singular -s.
+
+<Compare
+  caption="Missing third-person -s, accuracy at 0.5"
+  beforeLabel="Do most verbs lack -s?"
+  afterLabel="Are there mistakes like “he go”?"
+  before={70}
+  after={95}
+  beforeText="70%"
+  afterText="93–97%"
+  note='Measured on synthetic labels. Before: Do most third-person singular present-tense verbs lack the -s ending? After: Does it contain mistakes like "he go", "she like" or "my brother work"…?'
+/>
+
+The first question was "do most third-person singular present-tense verbs lack -s", a question about a tendency. The new one is "are there mistakes like he go, she like, my brother work", which narrows the judgement to a single kind of mistake and gives examples. Rewriting the missing-plural tag the same way took it from catching none of the planted mistakes to catching both.
+
+For some tags it was better to ask the other way round. Instead of "does the answer fail to address the question at the start", it asks "does the answer address the question right at the start" and subtracts the probability from 1. Accuracy went from 81% to 90%. My guess is that negative questions fall under the "indirection" that TypeSafe's docs list as a weak spot.
+
+As on the world trip site, each tag got its own line; cutting everything at 0.5 didn't fit. There was a trap in going by accuracy alone, though. Most answers have no weakness at all, so a judge that catches nothing still scores in the 90s. So recall was checked alongside, and each line was set at the middle of the band where accuracy peaked. Take the bottom of the band and you get values like 0.05, where every answer comes out as yes.
+
+The request shape was tested too. Dropping the yes/no descriptions attached to each question (the criteria) cut the input from 1,137 to 719 tokens, 37% less, but accuracy fell from 91% to 84%, so they stayed.
+
+It went live in the early hours of October 4. All 21 tags for an answer go in one request. The state holds only the transcribed answer and the question text; no identifiers like names or emails are sent. The model is pinned to `jev-1.13.0` rather than `jev-latest`, because each tag's line was fitted to 1.13.0's outputs, and if the alias starts pointing at a new model the lines drift without anyone noticing. A routine checks every Monday morning whether a new model has come out.
+
+## It can't catch an answer the transcription made up
+
+The same afternoon, ahead of shipping a grading overhaul, a different problem came up. Gemini, which does the transcription, sometimes took a recording where someone said something unrelated to the question and transcribed it as if it were an answer to the question. Since grading is done on that transcript, it went on the list of things that could block the release.
+
+So I asked: "Is there anything the current JEV model can cover here?" Jev already had a tag for "did they fail to answer the question". A research session checked, on 815 test inputs, whether it could filter these out. It cost about $0.016.
+
+When the transcript was accurate, it did well. Fed the original scripts of the recordings, it caught 32 of 33 off-topic answers and flagged none of the 17 on-topic answers or 118 normal answers. But it caught none of the 12 transcripts that had been made up. Its probabilities were 0.03 to 0.06, meaning it was quite sure they had answered.
+
+<Sequence
+  caption="What Jev sees is the transcript"
+  actors={['Recording', 'Gemini transcription', 'Jev judge']}
+  steps={[
+    {
+      from: 'Recording',
+      to: 'Gemini transcription',
+      label: 'A recording that answers something else',
+      note: 'The audio contains talk unrelated to the question.',
+    },
+    {
+      from: 'Gemini transcription',
+      to: 'Gemini transcription',
+      label: 'Made up to fit the question',
+      note: 'At the transcription step the content turns into an answer to the question. These were found with synthetic test audio.',
+    },
+    {
+      from: 'Gemini transcription',
+      to: 'Jev judge',
+      label: 'The made-up text',
+      note: 'This text is all Jev receives. It never hears the audio.',
+    },
+    {
+      from: 'Jev judge',
+      to: 'Jev judge',
+      label: '“Answered the question” 0.03–0.06',
+      note: 'All 12 were judged as answered. Read on its own, the text really does answer the question.',
+    },
+  ]}
+/>
+
+The text had already been turned into an answer to the question, so to Jev, which only reads the text, it is an answer to the question. The first post said Jev doesn't look at photos and reads the Photos app's description instead, and it's the same here. A judge that can't hear the audio can't catch a falsehood introduced at the transcription step. In the end the fix went into Gemini's transcription prompt.
+
+Even with a correct transcript, it wasn't clear Jev added much. On the same transcripts it agreed with Gemini's task judgement 95–96% of the time, and there were zero off-topic answers Gemini missed that Jev caught. As a grading aid, there was almost nothing to gain.
+
+The tag for speaking in short, disconnected sentences was checked as well, and it followed the transcript's full stops. Removing only the full stops from the same answers flipped 3 of 118 judgements; turning commas into full stops flipped 6. Where a speaker actually broke their sentences is in the audio, but what Jev sees is where the transcription put the dots.
+
+So Jev stays where it is, collecting weakness tags, and anything that goes into the grade is judged only inside Gemini's grading. That it always gives the same answer for the same transcript remained a point in its favour.
+
+## How accurate it is in production, I still don't know
+
+Every number so far came from synthetic answers and test recordings. There are only 60 human-labelled answers, training and validation together. In production a few dozen answers from a handful of users have piled up, and nobody has checked whether those judgements are right. Pulling some of them and labelling them by hand would probably tell me.
+
+Whether overturning the 9 to 7 was right would probably show up the same way, by putting the rewritten Jev and Gemini against those labels again. The lectures come after that data has piled up.
